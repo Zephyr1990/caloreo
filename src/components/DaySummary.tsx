@@ -1,8 +1,24 @@
 import { energyShares, formatGrams, formatNumber, goalProgress } from '../lib/nutrition';
+import { hrefs } from '../lib/router';
 import type { Totals } from '../lib/types';
 import { Icon } from './Icon';
 
-export function DaySummary({ totals, goal, label }: { totals: Totals; goal: number; label: string }) {
+export interface PlanLine {
+  title: string;
+  detail: string;
+}
+
+export function DaySummary({
+  totals,
+  goal,
+  label,
+  planLine = null,
+}: {
+  totals: Totals;
+  goal: number;
+  label: string;
+  planLine?: PlanLine | null;
+}) {
   const p = goalProgress(totals.kcal, goal);
   const over = p.over > 0;
   return (
@@ -30,6 +46,20 @@ export function DaySummary({ totals, goal, label }: { totals: Totals; goal: numb
         )}
         <span class="muted">{p.percent}% celu</span>
       </div>
+      {planLine && (
+        <a class="plan-line" href={hrefs.weight()}>
+          <span class="plan-line-icon">
+            <Icon name="scale" size={18} />
+          </span>
+          <span class="stack" style={{ gap: 0, flex: 1 }}>
+            <span style={{ fontSize: '14px', fontWeight: 700 }}>{planLine.title}</span>
+            <span class="small" style={{ color: 'var(--ink-secondary)' }}>
+              {planLine.detail}
+            </span>
+          </span>
+          <Icon name="chevronRight" size={18} />
+        </a>
+      )}
       <hr class="divider" />
       <MacroSummary totals={totals} />
     </section>

@@ -7,7 +7,7 @@ import { mealsInRange, mealsVersion } from '../lib/db';
 import { chartMax, summarizeHistory, type DayStat } from '../lib/history';
 import { formatNumber } from '../lib/nutrition';
 import { hrefs } from '../lib/router';
-import { settings } from '../lib/settings';
+import { useGoal } from '../lib/usePlan';
 import type { Meal } from '../lib/types';
 
 /** Kept outside the view so the choice survives switching tabs. */
@@ -18,7 +18,7 @@ const PLOT_HEIGHT = 160;
 export function HistoryView() {
   const today = todayKey();
   const count = range.value;
-  const goal = settings.value.dailyGoal;
+  const { goal } = useGoal();
   const version = mealsVersion.value;
   const [meals, setMeals] = useState<Meal[] | null>(null);
   const [selected, setSelected] = useState<string | null>(null);

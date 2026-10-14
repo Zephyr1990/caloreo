@@ -1,11 +1,12 @@
 import { hrefs } from '../lib/router';
 import { Icon } from './Icon';
 
-type Tab = 'day' | 'history' | 'settings';
+type Tab = 'day' | 'history' | 'weight' | 'settings';
 
-const TABS: { id: Tab; label: string; href: string; icon: 'home' | 'chart' | 'gear' }[] = [
+const TABS: { id: Tab; label: string; href: string; icon: 'home' | 'chart' | 'scale' | 'gear' }[] = [
   { id: 'day', label: 'Dziś', href: hrefs.today(), icon: 'home' },
   { id: 'history', label: 'Historia', href: hrefs.history(), icon: 'chart' },
+  { id: 'weight', label: 'Waga', href: hrefs.weight(), icon: 'scale' },
   { id: 'settings', label: 'Ustawienia', href: hrefs.settings(), icon: 'gear' },
 ];
 

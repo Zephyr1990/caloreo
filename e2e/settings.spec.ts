@@ -60,8 +60,8 @@ test('exports, deletes and imports the diary', async ({ page }, testInfo) => {
   await download.saveAs(backupPath);
 
   page.once('dialog', (d) => d.accept());
-  await page.getByRole('button', { name: 'Usuń wszystkie posiłki' }).click();
-  await expect(page.getByText('Usunięto wszystkie posiłki.')).toBeVisible();
+  await page.getByRole('button', { name: 'Usuń wszystkie dane' }).click();
+  await expect(page.getByText('Usunięto wszystkie dane.')).toBeVisible();
 
   await page.locator('input[type="file"][accept*="json"]').setInputFiles(backupPath);
   await expect(page.getByText('Zaimportowano posiłki: 1.')).toBeVisible();

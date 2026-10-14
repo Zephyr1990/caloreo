@@ -117,3 +117,16 @@ export function formatGrams(n: number): string {
 function safe(n: number): number {
   return Number.isFinite(n) ? n : 0;
 }
+
+/** Kilograms with one decimal and a Polish comma: 78.44 -> "78,4". */
+export function formatKg(n: number): string {
+  const v = Number.isFinite(n) ? Math.round(n * 10) / 10 : 0;
+  return v.toFixed(1).replace('.', ',');
+}
+
+/** Signed kilograms: "−0,5", "+0,3", "0,0". */
+export function formatKgDelta(n: number): string {
+  const v = Math.round(n * 10) / 10;
+  if (v === 0) return '0,0';
+  return `${v > 0 ? '+' : '−'}${Math.abs(v).toFixed(1).replace('.', ',')}`;
+}

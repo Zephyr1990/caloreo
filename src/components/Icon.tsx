@@ -58,6 +58,20 @@ const PATHS = {
       <path d="M11 12l9-9M17 6l3 3" />
     </>
   ),
+  scale: (
+    <>
+      <rect x="3" y="3" width="18" height="18" rx="4" />
+      <path d="M8 10a4 4 0 0 1 8 0" />
+      <path d="M12 10l1.5-2" />
+    </>
+  ),
+  warning: (
+    <>
+      <path d="M12 4l9 16H3z" />
+      <path d="M12 10v4M12 17h.01" />
+    </>
+  ),
+  flame: <path d="M12 3c1 3 5 5 5 10a5 5 0 0 1-10 0c0-2 1-3.5 2-4.5.5 1.5 1.5 2.5 2.5 2.5C11 8 11 5.5 12 3z" />,
   phone: (
     <>
       <rect x="7" y="2" width="10" height="20" rx="2" />

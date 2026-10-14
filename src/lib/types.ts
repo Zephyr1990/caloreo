@@ -72,3 +72,43 @@ export interface Meal extends MealDraft {
   createdAt: string;
   updatedAt: string;
 }
+
+export type Sex = 'male' | 'female';
+
+export type ActivityLevel = 'sedentary' | 'light' | 'moderate' | 'high' | 'very_high';
+
+export interface Profile {
+  sex: Sex;
+  birthYear: number;
+  heightCm: number;
+  /** Declared activity, used until there is enough data from Garmin. */
+  activity: ActivityLevel;
+}
+
+export interface WeightPlan {
+  /** Day the plan was set (YYYY-MM-DD). */
+  startDate: string;
+  startWeight: number;
+  targetWeight: number;
+  targetDate: string;
+  /** The user saved this plan despite threshold warnings; the daily target is not clamped. */
+  acceptedUnsafe: boolean;
+  createdAt: string;
+}
+
+/** One weigh-in per day. */
+export interface WeightEntry {
+  date: string;
+  kg: number;
+  updatedAt: string;
+}
+
+/** Activity of one day, entered from Garmin. */
+export interface ActivityEntry {
+  date: string;
+  /** Garmin "active calories" for the whole day (steps and workouts). */
+  activeKcal: number | null;
+  /** Shown for information only; not added to the burn (already in active calories). */
+  steps: number | null;
+  updatedAt: string;
+}
