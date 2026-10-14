@@ -1,7 +1,8 @@
-import { useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { Icon } from '../components/Icon';
 import { NumberField } from '../components/NumberField';
 import { TabBar } from '../components/TabBar';
+import { clearMeals } from '../lib/db';
 import { MODELS, settings, updateSettings } from '../lib/settings';
 
 function keyInputProps(value: string) {
@@ -13,13 +14,69 @@ function keyInputProps(value: string) {
     spellcheck: false,
     placeholder: 'sk-ant-...',
     value,
-    onChange: (e: Event) => updateSettings({ apiKey: (e.currentTarget as HTMLInputElement).value }),
+    onInput: (e: Event) => updateSettings({ apiKey: (e.currentTarget as HTMLInputElement).value }),
   };
+}
+
+type Status = { kind: 'ok' | 'error' | 'busy'; text: string } | null;
+
+function isStandalone(): boolean {
+  const nav = navigator as Navigator & { standalone?: boolean };
+  return window.matchMedia?.('(display-mode: standalone)').matches || nav.standalone === true;
 }
 
 export function SettingsView() {
   const s = settings.value;
   const [showKey, setShowKey] = useState(false);
+  const [keyStatus, setKeyStatus] = useState<Status>(null);
+  const [dataStatus, setDataStatus] = useState<Status>(null);
+  const [persisted, setPersisted] = useState<boolean | null>(null);
+  const importRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    navigator.storage?.persisted?.().then(setPersisted, () => setPersisted(null));
+  }, []);
+
+  const checkKey = async () => {
+    setKeyStatus({ kind: 'busy', text: 'Sprawdzam…' });
+    try {
+      const { checkApiKey } = await import('../lib/analyze');
+      await checkApiKey(settings.value.apiKey, settings.value.model);
+      setKeyStatus({ kind: 'ok', text: 'Klucz działa i ma dostęp do wybranego modelu.' });
+    } catch (e) {
+      setKeyStatus({ kind: 'error', text: e instanceof Error ? e.message : String(e) });
+    }
+  };
+
+  const doExport = async () => {
+    try {
+      const { exportBackup } = await import('../lib/backup');
+      const result = await exportBackup();
+      if (result !== 'cancelled') setDataStatus({ kind: 'ok', text: 'Kopia gotowa. Zachowaj plik, np. w aplikacji Pliki.' });
+    } catch (e) {
+      setDataStatus({ kind: 'error', text: `Nie udało się utworzyć kopii: ${e instanceof Error ? e.message : String(e)}` });
+    }
+  };
+
+  const doImport = async (e: Event) => {
+    const input = e.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    try {
+      const { importBackup } = await import('../lib/backup');
+      const count = await importBackup(file);
+      setDataStatus({ kind: 'ok', text: `Zaimportowano posiłki: ${count}.` });
+    } catch (err) {
+      setDataStatus({ kind: 'error', text: err instanceof Error ? err.message : String(err) });
+    }
+  };
+
+  const deleteAll = async () => {
+    if (!window.confirm('Usunąć wszystkie zapisane posiłki z tego telefonu? Tego nie da się cofnąć.')) return;
+    await clearMeals();
+    setDataStatus({ kind: 'ok', text: 'Usunięto wszystkie posiłki.' });
+  };
 
   return (
     <>
@@ -27,6 +84,19 @@ export function SettingsView() {
         <header class="topbar" style={{ justifyContent: 'flex-start' }}>
           <h1 class="page-title">Ustawienia</h1>
         </header>
+
+        {!isStandalone() && (
+          <section class="notice">
+            <div class="notice-title">
+              <Icon name="phone" size={16} />
+              Zainstaluj na iPhonie
+            </div>
+            <p style={{ margin: 0 }}>
+              W Safari dotknij Udostępnij, a potem „Do ekranu początkowego”. Caloreo otworzy się jak zwykła aplikacja, na
+              pełnym ekranie.
+            </p>
+          </section>
+        )}
 
         <h2 class="section-label">Analiza AI</h2>
         <section class="card">
@@ -40,7 +110,21 @@ export function SettingsView() {
                 {showKey ? 'Ukryj' : 'Pokaż'}
               </button>
             </div>
-            <div class="small muted">Klucz jest zapisany tylko na tym telefonie.</div>
+            <div class="small muted">
+              Klucz utworzysz na console.anthropic.com (API Keys). Ustaw tam miesięczny limit wydatków. Klucz jest zapisany
+              tylko na tym telefonie.
+            </div>
+            <button
+              type="button"
+              class="btn btn-ghost"
+              style={{ alignSelf: 'flex-start', paddingLeft: 0 }}
+              disabled={!s.apiKey || keyStatus?.kind === 'busy'}
+              onClick={checkKey}
+            >
+              <Icon name="key" size={18} />
+              Sprawdź klucz
+            </button>
+            {keyStatus && <StatusLine status={keyStatus} />}
           </div>
           <hr class="divider" />
           <fieldset style={{ border: 'none', margin: 0, padding: 0 }} class="stack">
@@ -52,7 +136,10 @@ export function SettingsView() {
                   name="model"
                   value={m.id}
                   checked={s.model === m.id}
-                  onChange={() => updateSettings({ model: m.id })}
+                  onChange={() => {
+                    updateSettings({ model: m.id });
+                    setKeyStatus(null);
+                  }}
                   style={{ width: '20px', height: '20px', margin: 0, accentColor: 'var(--accent)' }}
                 />
                 <span class="stack" style={{ gap: 0 }}>
@@ -67,30 +154,66 @@ export function SettingsView() {
         </section>
 
         <h2 class="section-label">Cel</h2>
-        <section class="card" style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <label for="goal" style={{ fontSize: '15px', fontWeight: 600 }}>
-            Dzienny cel kalorii
-          </label>
-          <div class="row">
-            <div style={{ width: '96px' }}>
-              <NumberField
-                id="goal"
-                value={s.dailyGoal}
-                onValue={(n) => n >= 500 && n <= 10000 && updateSettings({ dailyGoal: n })}
-              />
+        <section class="card">
+          <div class="row-between">
+            <label for="goal" style={{ fontSize: '15px', fontWeight: 600 }}>
+              Dzienny cel kalorii
+            </label>
+            <div class="row">
+              <div style={{ width: '96px' }}>
+                <NumberField
+                  id="goal"
+                  value={s.dailyGoal}
+                  onValue={(n) => n >= 500 && n <= 10000 && updateSettings({ dailyGoal: n })}
+                />
+              </div>
+              <span class="muted">kcal</span>
             </div>
-            <span class="muted">kcal</span>
+          </div>
+          <div class="small muted">
+            Domyślnie 2100 kcal: zapotrzebowanie wyliczone wzorem Mifflin-St Jeor dla 80 kg, 183 cm, 36 lat, przy siedzącym
+            trybie życia. To szacunek, możesz go zmienić.
           </div>
         </section>
+
+        <h2 class="section-label">Dane</h2>
+        <section class="card" style={{ padding: '4px 14px', gap: 0 }}>
+          <button type="button" class="list-btn" onClick={doExport}>
+            <Icon name="download" size={20} />
+            Eksportuj kopię (plik JSON)
+          </button>
+          <button type="button" class="list-btn" onClick={() => importRef.current?.click()}>
+            <Icon name="upload" size={20} />
+            Importuj kopię
+          </button>
+          <button type="button" class="list-btn danger" onClick={deleteAll}>
+            <Icon name="trash" size={20} />
+            Usuń wszystkie posiłki
+          </button>
+          <input
+            ref={importRef}
+            class="visually-hidden"
+            type="file"
+            accept="application/json,.json"
+            tabIndex={-1}
+            aria-hidden="true"
+            onChange={doImport}
+          />
+        </section>
+        {dataStatus && <StatusLine status={dataStatus} />}
 
         <section class="notice">
           <div class="notice-title">
             <Icon name="info" size={16} />
-            Prywatność
+            Prywatność i kopie
           </div>
           <p style={{ margin: 0 }}>
             Dziennik i klucz są zapisane tylko na tym telefonie. Opis i zdjęcia trafiają do Anthropic wyłącznie w chwili
-            analizy.
+            analizy. Kopia zapasowa nie zawiera klucza API.
+          </p>
+          <p style={{ margin: 0 }}>
+            Trwałe przechowywanie danych:{' '}
+            {persisted === null ? 'nieznane' : persisted ? 'włączone' : 'niepotwierdzone, rób czasem kopię'}.
           </p>
         </section>
       </main>
@@ -98,5 +221,15 @@ export function SettingsView() {
         <TabBar active="settings" />
       </div>
     </>
+  );
+}
+
+function StatusLine({ status }: { status: NonNullable<Status> }) {
+  const color = status.kind === 'error' ? 'var(--warn)' : status.kind === 'ok' ? 'var(--accent)' : 'var(--ink-secondary)';
+  return (
+    <div role="status" class="row" style={{ gap: '6px', fontSize: '14px', fontWeight: 600, color, alignItems: 'flex-start' }}>
+      {status.kind === 'ok' && <Icon name="check" size={16} strokeWidth={3} />}
+      <span>{status.text}</span>
+    </div>
   );
 }

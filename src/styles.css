@@ -1010,3 +1010,28 @@ a {
   font-weight: 700;
   color: var(--ink);
 }
+
+/* Settings list buttons */
+
+.list-btn {
+  min-height: 50px;
+  border: none;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0;
+  font-size: 15px;
+  font-weight: 600;
+  text-align: left;
+}
+
+.list-btn:last-of-type {
+  border-bottom: none;
+}
+
+.list-btn.danger {
+  color: var(--warn);
+}

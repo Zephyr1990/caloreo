@@ -16,8 +16,7 @@ import { MEAL_TYPES, type MealDraft } from '../lib/types';
 
 export function AddMealView() {
   const d = addDraft.value;
-  const close = () => {
-    const date = d.date;
+  const close = (date: string = d.date) => {
     cancelListening();
     cancelAnalysis();
     startDraft();
@@ -47,7 +46,7 @@ function Compose({ d, onClose }: { d: AddDraft; onClose: () => void }) {
     <>
       <main class="screen" style={{ paddingBottom: 'calc(160px + var(--safe-bottom))' }}>
         <header class="topbar">
-          <button type="button" class="round-btn" aria-label="Zamknij" onClick={onClose}>
+          <button type="button" class="round-btn" aria-label="Zamknij" onClick={() => onClose()}>
             <Icon name="close" size={20} />
           </button>
           <h1>Nowy posiłek</h1>
@@ -190,7 +189,7 @@ function Analyzing() {
   );
 }
 
-function Review({ meal, error, onClose }: { meal: MealDraft; error: string | null; onClose: () => void }) {
+function Review({ meal, error, onClose }: { meal: MealDraft; error: string | null; onClose: (date?: string) => void }) {
   const [correction, setCorrectionState] = useState('');
   // Dictation updates arrive between renders; the ref always holds the latest text.
   const correctionRef = useRef('');
@@ -220,8 +219,7 @@ function Review({ meal, error, onClose }: { meal: MealDraft; error: string | nul
       updatedAt: now,
     });
     void requestPersistentStorage();
-    cancelListening();
-    onClose();
+    onClose(meal.date);
   };
 
   return (
