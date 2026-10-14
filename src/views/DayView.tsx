@@ -5,11 +5,12 @@ import { MealRow } from '../components/MealRow';
 import { TabBar } from '../components/TabBar';
 import { addDays, dayTitle, longDate, todayKey } from '../lib/dates';
 import { mealsForDate, mealsVersion } from '../lib/db';
-import { startDraft } from '../lib/draft';
+import { patchDraft, startDraft } from '../lib/draft';
 import { addPhotos } from '../lib/flow';
 import { sumMeals } from '../lib/nutrition';
 import { hrefs, navigate } from '../lib/router';
 import { settings } from '../lib/settings';
+import { startListening } from '../lib/speech';
 import type { Meal } from '../lib/types';
 
 export function DayView({ date }: { date: string }) {
@@ -32,6 +33,13 @@ export function DayView({ date }: { date: string }) {
 
   const startAdd = () => {
     startDraft(date);
+    navigate(hrefs.add());
+  };
+
+  // Dictation must start inside the tap handler; the add screen then shows the live text.
+  const startVoice = () => {
+    startDraft(date);
+    startListening({ target: 'description', base: '', onText: (description) => patchDraft({ description }) });
     navigate(hrefs.add());
   };
 
@@ -102,7 +110,7 @@ export function DayView({ date }: { date: string }) {
             aria-hidden="true"
             onChange={onPhoto}
           />
-          <button type="button" class="dock-mic" aria-label="Powiedz, co zjadłeś" onClick={startAdd}>
+          <button type="button" class="dock-mic" aria-label="Powiedz, co zjadłeś" onClick={startVoice}>
             <Icon name="mic" size={30} />
           </button>
           <button type="button" class="dock-btn" aria-label="Wpisz posiłek ręcznie" onClick={startAdd}>

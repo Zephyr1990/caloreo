@@ -832,3 +832,64 @@ a {
     animation-duration: 2.5s;
   }
 }
+
+/* Dictation */
+
+.mic-panel {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: var(--surface);
+  border-radius: 18px;
+  padding: 12px 16px 12px 12px;
+}
+
+.mic-ring {
+  width: 76px;
+  height: 76px;
+  flex: none;
+  border-radius: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+}
+
+.mic-ring.listening {
+  background: var(--accent-track);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+.mic-btn {
+  width: 60px;
+  height: 60px;
+  border-radius: 30px;
+  border: none;
+  background: var(--accent);
+  color: var(--on-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mic-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.06);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mic-ring.listening {
+    animation: none;
+  }
+}

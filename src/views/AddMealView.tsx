@@ -2,6 +2,7 @@ import { useRef, useState } from 'preact/hooks';
 import { Icon } from '../components/Icon';
 import { MealEditor } from '../components/MealEditor';
 import { mealTitle } from '../components/MealRow';
+import { MicPanel } from '../components/MicPanel';
 import { todayKey } from '../lib/dates';
 import { requestPersistentStorage, saveMeal } from '../lib/db';
 import { addDraft, manualMealFromDraft, patchDraft, startDraft, type AddDraft } from '../lib/draft';
@@ -10,12 +11,14 @@ import { newId } from '../lib/id';
 import { formatNumber, sumItems } from '../lib/nutrition';
 import { hrefs, navigate } from '../lib/router';
 import { MODELS, settings } from '../lib/settings';
+import { cancelListening, speech, stopListening } from '../lib/speech';
 import { MEAL_TYPES, type MealDraft } from '../lib/types';
 
 export function AddMealView() {
   const d = addDraft.value;
   const close = () => {
     const date = d.date;
+    cancelListening();
     cancelAnalysis();
     startDraft();
     navigate(date === todayKey() ? hrefs.today() : hrefs.day(date), { replace: true });
@@ -28,7 +31,17 @@ export function AddMealView() {
 
 function Compose({ d, onClose }: { d: AddDraft; onClose: () => void }) {
   const hasKey = settings.value.apiKey !== '';
-  const canAnalyze = hasKey && (d.description.trim() !== '' || d.photos.length > 0);
+  const listening = speech.value.listening && speech.value.target === 'description';
+  const canAnalyze = hasKey && (d.description.trim() !== '' || d.photos.length > 0 || listening);
+  const analyze = async () => {
+    await stopListening();
+    void runAnalysis();
+  };
+  const manual = async () => {
+    await stopListening();
+    const current = addDraft.value;
+    patchDraft({ phase: 'review', meal: manualMealFromDraft(current), error: null });
+  };
 
   return (
     <>
@@ -60,28 +73,35 @@ function Compose({ d, onClose }: { d: AddDraft; onClose: () => void }) {
           </div>
         </fieldset>
 
-        <PhotoStrip photos={d.photos} />
-
         <div class="field">
           <label class="label" for="description">
             Opis (mów lub pisz)
           </label>
           <textarea
             id="description"
-            class="textarea"
-            rows={4}
+            class={listening ? 'textarea active' : 'textarea'}
+            rows={3}
             value={d.description}
             placeholder="np. Na obiad zjadłem pierś z kurczaka, około 150 g, woreczek ryżu i surówkę z marchewki"
             onInput={(e) => patchDraft({ description: e.currentTarget.value })}
           />
-          <div class="small muted">Podaj gramy lub miary, jeśli je znasz: „150 gramów”, „szklanka”, „pół talerza”.</div>
         </div>
+
+        <MicPanel
+          target="description"
+          value={d.description}
+          onText={(description) => patchDraft({ description })}
+          idleTitle="Dotknij i powiedz, co zjadłeś"
+          idleHint="Podaj gramy lub miary, jeśli je znasz: „150 gramów”, „szklanka”, „pół talerza”."
+        />
 
         {d.error && (
           <div class="error" role="alert">
             <strong>Nie udało się.</strong> {d.error}
           </div>
         )}
+
+        <PhotoStrip photos={d.photos} />
 
         {!hasKey && (
           <div class="notice">
@@ -98,15 +118,11 @@ function Compose({ d, onClose }: { d: AddDraft; onClose: () => void }) {
       </main>
 
       <div class="footer">
-        <button type="button" class="btn btn-primary" disabled={!canAnalyze} onClick={() => runAnalysis()}>
+        <button type="button" class="btn btn-primary" disabled={!canAnalyze} onClick={analyze}>
           <Icon name="analyze" size={20} />
           Policz kalorie
         </button>
-        <button
-          type="button"
-          class="btn btn-ghost"
-          onClick={() => patchDraft({ phase: 'review', meal: manualMealFromDraft(d), error: null })}
-        >
+        <button type="button" class="btn btn-ghost" onClick={manual}>
           Wpisz ręcznie, bez AI
         </button>
       </div>
@@ -175,7 +191,19 @@ function Analyzing() {
 }
 
 function Review({ meal, error, onClose }: { meal: MealDraft; error: string | null; onClose: () => void }) {
-  const [correction, setCorrection] = useState('');
+  const [correction, setCorrectionState] = useState('');
+  // Dictation updates arrive between renders; the ref always holds the latest text.
+  const correctionRef = useRef('');
+  const setCorrection = (text: string) => {
+    correctionRef.current = text;
+    setCorrectionState(text);
+  };
+  const recalculate = async () => {
+    await stopListening();
+    const text = correctionRef.current.trim();
+    if (text) void runAnalysis(text);
+  };
+  const correcting = speech.value.listening && speech.value.target === 'correction';
   const total = sumItems(meal.items).kcal;
   const canSave = meal.items.length > 0 || meal.name.trim() !== '';
   const hasKey = settings.value.apiKey !== '';
@@ -192,6 +220,7 @@ function Review({ meal, error, onClose }: { meal: MealDraft; error: string | nul
       updatedAt: now,
     });
     void requestPersistentStorage();
+    cancelListening();
     onClose();
   };
 
@@ -203,7 +232,10 @@ function Review({ meal, error, onClose }: { meal: MealDraft; error: string | nul
             type="button"
             class="round-btn"
             aria-label="Wróć do opisu"
-            onClick={() => patchDraft({ phase: 'compose', meal: null, error: null })}
+            onClick={() => {
+              cancelListening();
+              patchDraft({ phase: 'compose', meal: null, error: null });
+            }}
           >
             <Icon name="chevronLeft" />
           </button>
@@ -230,17 +262,24 @@ function Review({ meal, error, onClose }: { meal: MealDraft; error: string | nul
             </label>
             <textarea
               id="correction"
-              class="textarea"
+              class={correcting ? 'textarea active' : 'textarea'}
               rows={2}
               value={correction}
               placeholder="np. ryżu było pół woreczka, kurczak był smażony"
               onInput={(e) => setCorrection(e.currentTarget.value)}
             />
+            <MicPanel
+              target="correction"
+              value={correction}
+              onText={setCorrection}
+              idleTitle="Popraw głosem"
+              idleHint="Powiedz, co się nie zgadza, a AI przeliczy posiłek."
+            />
             <button
               type="button"
               class="btn btn-outline"
-              disabled={!correction.trim()}
-              onClick={() => runAnalysis(correction)}
+              disabled={!correction.trim() && !correcting}
+              onClick={recalculate}
             >
               <Icon name="analyze" size={20} />
               Popraw i przelicz

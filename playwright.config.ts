@@ -15,6 +15,8 @@ export default defineConfig({
     locale: 'pl-PL',
     timezoneId: 'Europe/Warsaw',
     serviceWorkers: 'block',
+    // Pulsing elements never become "stable" for clicks; the app turns animation off for reduced motion.
+    contextOptions: { reducedMotion: 'reduce' },
     launchOptions: { executablePath: process.env.CHROMIUM_PATH || undefined },
   },
   webServer: {
