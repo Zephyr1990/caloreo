@@ -1,0 +1,33 @@
+{
+  "name": "caloreo",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Prywatny licznik kalorii na iPhone (PWA): głos i zdjęcia, analiza przez Claude.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.133.0",
+    "@preact/signals": "^2.11.3",
+    "idb": "^8.0.4",
+    "preact": "^11.0.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "@preact/preset-vite": "^2.10.6",
+    "@types/node": "^26.6.5",
+    "fake-indexeddb": "^6.2.5",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.4",
+    "vite-plugin-pwa": "^2.0.0",
+    "vitest": "^5.0.4",
+    "workbox-window": "^7.4.1"
+  }
+}
