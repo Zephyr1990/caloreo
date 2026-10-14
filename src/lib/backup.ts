@@ -1,10 +1,12 @@
 import { z } from 'zod';
-import { allMeals, saveMeals } from './db';
+import { body, parseBody, updateBody, type BodySettings } from './body';
+import { allActivity, allMeals, allWeights, saveBodyData, saveMeals } from './db';
 import { todayKey } from './dates';
 import { MODELS, settings, updateSettings, type ModelId } from './settings';
-import type { Meal } from './types';
+import type { ActivityEntry, Meal, WeightEntry } from './types';
 
-export const BACKUP_VERSION = 1;
+/** 1: meals and settings. 2: also weigh-ins, activity, profile and weight plan. */
+export const BACKUP_VERSION = 2;
 
 const ItemSchema = z.object({
   id: z.string(),
@@ -34,6 +36,19 @@ const MealSchema = z.object({
   updatedAt: z.string(),
 });
 
+const WeightSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  kg: z.number(),
+  updatedAt: z.string(),
+});
+
+const ActivitySchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  activeKcal: z.number().nullable(),
+  steps: z.number().nullable(),
+  updatedAt: z.string(),
+});
+
 const BackupSchema = z.object({
   app: z.literal('caloreo'),
   version: z.number(),
@@ -45,24 +60,41 @@ const BackupSchema = z.object({
     })
     .optional(),
   meals: z.array(MealSchema),
+  weights: z.array(WeightSchema).optional(),
+  activity: z.array(ActivitySchema).optional(),
+  body: z.unknown().optional(),
 });
 
 export interface Backup {
   meals: Meal[];
+  weights: WeightEntry[];
+  activity: ActivityEntry[];
+  /** null for version 1 backups, which had no profile or plan. */
+  body: BodySettings | null;
   settings: { model?: ModelId; dailyGoal?: number };
+}
+
+export interface BackupData {
+  meals: readonly Meal[];
+  weights?: readonly WeightEntry[];
+  activity?: readonly ActivityEntry[];
+  body?: BodySettings;
 }
 
 export class BackupError extends Error {}
 
 /** The API key is never part of a backup. */
-export function buildBackup(meals: readonly Meal[], s: { model: string; dailyGoal: number }, now = new Date()): string {
+export function buildBackup(data: BackupData, s: { model: string; dailyGoal: number }, now = new Date()): string {
   return JSON.stringify(
     {
       app: 'caloreo',
       version: BACKUP_VERSION,
       exportedAt: now.toISOString(),
       settings: { model: s.model, dailyGoal: s.dailyGoal },
-      meals,
+      meals: data.meals,
+      weights: data.weights ?? [],
+      activity: data.activity ?? [],
+      body: data.body ?? null,
     },
     null,
     1,
@@ -86,6 +118,9 @@ export function parseBackup(text: string): Backup {
   const s = result.data.settings ?? {};
   return {
     meals: result.data.meals,
+    weights: result.data.weights ?? [],
+    activity: result.data.activity ?? [],
+    body: result.data.body ? parseBody(result.data.body) : null,
     settings: {
       model: MODELS.some((m) => m.id === s.model) ? (s.model as ModelId) : undefined,
       dailyGoal: s.dailyGoal,
@@ -99,7 +134,8 @@ export function backupFileName(date: string = todayKey()): string {
 
 /** Saves a backup file. On iPhone this opens the share sheet ("Zachowaj w Plikach"). */
 export async function exportBackup(): Promise<'shared' | 'downloaded' | 'cancelled'> {
-  const text = buildBackup(await allMeals(), settings.value);
+  const [meals, weights, activity] = await Promise.all([allMeals(), allWeights(), allActivity()]);
+  const text = buildBackup({ meals, weights, activity, body: body.value }, settings.value);
   const name = backupFileName();
   const file = new File([text], name, { type: 'application/json' });
   if (navigator.canShare?.({ files: [file] })) {
@@ -126,6 +162,8 @@ export async function exportBackup(): Promise<'shared' | 'downloaded' | 'cancell
 export async function importBackup(file: Blob): Promise<number> {
   const backup = parseBackup(await file.text());
   await saveMeals(backup.meals);
+  await saveBodyData(backup.weights, backup.activity);
+  if (backup.body) updateBody(backup.body);
   const patch: Parameters<typeof updateSettings>[0] = {};
   if (backup.settings.model) patch.model = backup.settings.model;
   if (backup.settings.dailyGoal) patch.dailyGoal = backup.settings.dailyGoal;

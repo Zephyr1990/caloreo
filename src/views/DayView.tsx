@@ -1,17 +1,20 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { DaySummary } from '../components/DaySummary';
+import { ActivityCard } from '../components/ActivityCard';
+import { DaySummary, type PlanLine } from '../components/DaySummary';
 import { Icon } from '../components/Icon';
 import { MealRow } from '../components/MealRow';
 import { TabBar } from '../components/TabBar';
-import { addDays, dayTitle, longDate, todayKey } from '../lib/dates';
+import { addDays, dayTitle, longDate, shortDate, todayKey } from '../lib/dates';
 import { mealsForDate, mealsVersion } from '../lib/db';
 import { patchDraft, startDraft } from '../lib/draft';
 import { addPhotos } from '../lib/flow';
-import { sumMeals } from '../lib/nutrition';
+import { body } from '../lib/body';
+import { formatKg, formatNumber, sumMeals } from '../lib/nutrition';
 import { hrefs, navigate } from '../lib/router';
-import { settings } from '../lib/settings';
 import { startListening } from '../lib/speech';
 import type { Meal } from '../lib/types';
+import { useGoal } from '../lib/usePlan';
+import { weightOn, type PlanStatus } from '../lib/weightPlan';
 
 export function DayView({ date }: { date: string }) {
   const today = todayKey();
@@ -27,6 +30,14 @@ export function DayView({ date }: { date: string }) {
   }, [date, version]);
 
   const totals = sumMeals(meals ?? []);
+  const { goal, fromPlan, status, data } = useGoal();
+  const profile = body.value.profile;
+  const plan = body.value.plan;
+  const weightKg = weightOn(data?.weights ?? [], date, plan?.startWeight ?? data?.weights[0]?.kg ?? 80);
+  const yesterday = addDays(today, -1);
+  // Remind about yesterday's Garmin data only to someone who already enters it.
+  const remindYesterday =
+    date === today && profile !== null && !!data && data.activity.length > 0 && !data.activity.some((a) => a.date === yesterday);
   const isToday = date === today;
   const next = addDays(date, 1);
   const hrefFor = (d: string) => (d === today ? hrefs.today() : hrefs.day(d));
@@ -77,7 +88,20 @@ export function DayView({ date }: { date: string }) {
           </button>
         </header>
 
-        <DaySummary totals={totals} goal={settings.value.dailyGoal} label={isToday ? 'Zjedzone dziś' : 'Zjedzone tego dnia'} />
+        <DaySummary
+          totals={totals}
+          goal={goal}
+          label={isToday ? 'Zjedzone dziś' : 'Zjedzone tego dnia'}
+          planLine={fromPlan && status ? planLine(status) : null}
+        />
+
+        {remindYesterday && (
+          <a class="reminder" href={hrefs.day(yesterday)}>
+            <Icon name="flame" size={20} />
+            <span style={{ flex: 1 }}>Uzupełnij aktywność z wczoraj</span>
+            <Icon name="chevronRight" size={18} />
+          </a>
+        )}
 
         <section class="stack" aria-label="Posiłki">
           <div class="row-between" style={{ padding: '0 4px', alignItems: 'baseline' }}>
@@ -93,6 +117,8 @@ export function DayView({ date }: { date: string }) {
           )}
           {meals?.map((m) => <MealRow key={m.id} meal={m} />)}
         </section>
+
+        {meals && <ActivityCard date={date} eaten={totals.kcal} weightKg={weightKg} status={status} />}
       </main>
 
       <div class="bottom">
@@ -129,4 +155,14 @@ function entriesLabel(n: number): string {
   const lastTwo = n % 100;
   if (lastDigit >= 2 && lastDigit <= 4 && (lastTwo < 12 || lastTwo > 14)) return `${n} wpisy`;
   return `${n} wpisów`;
+}
+
+function planLine(s: PlanStatus): PlanLine {
+  const p = s.plan;
+  const title = `Cel z planu wagi: ${formatKg(p.targetWeight)} kg do ${shortDate(p.targetDate)}`;
+  if (s.state === 'reached') return { title: 'Cel wagi osiągnięty', detail: 'cel kalorii na utrzymanie wagi' };
+  if (s.state === 'expired') return { title, detail: 'termin minął, cel kalorii na utrzymanie wagi' };
+  const kind = s.dailyDelta >= 0 ? 'deficyt' : 'nadwyżka';
+  const weekly = String(Math.round(((Math.abs(s.dailyDelta) * 7) / 7700) * 100) / 100).replace('.', ',');
+  return { title, detail: `${kind} ${formatNumber(Math.abs(s.dailyDelta))} kcal · ${weekly} kg na tydzień` };
 }

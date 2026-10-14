@@ -2,7 +2,11 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { Icon } from '../components/Icon';
 import { NumberField } from '../components/NumberField';
 import { TabBar } from '../components/TabBar';
-import { clearMeals } from '../lib/db';
+import { body, updateBody } from '../lib/body';
+import { clearAllData } from '../lib/db';
+import { formatNumber } from '../lib/nutrition';
+import { hrefs } from '../lib/router';
+import { useGoal } from '../lib/usePlan';
 import { MODELS, settings, updateSettings } from '../lib/settings';
 
 function keyInputProps(value: string) {
@@ -27,6 +31,8 @@ function isStandalone(): boolean {
 
 export function SettingsView() {
   const s = settings.value;
+  const { status } = useGoal();
+  const goalSource = body.value.goalSource;
   const [showKey, setShowKey] = useState(false);
   const [keyStatus, setKeyStatus] = useState<Status>(null);
   const [dataStatus, setDataStatus] = useState<Status>(null);
@@ -73,9 +79,9 @@ export function SettingsView() {
   };
 
   const deleteAll = async () => {
-    if (!window.confirm('Usunąć wszystkie zapisane posiłki z tego telefonu? Tego nie da się cofnąć.')) return;
-    await clearMeals();
-    setDataStatus({ kind: 'ok', text: 'Usunięto wszystkie posiłki.' });
+    if (!window.confirm('Usunąć wszystkie posiłki, pomiary wagi i aktywność z tego telefonu? Tego nie da się cofnąć.')) return;
+    await clearAllData();
+    setDataStatus({ kind: 'ok', text: 'Usunięto wszystkie dane.' });
   };
 
   return (
@@ -153,27 +159,61 @@ export function SettingsView() {
           </fieldset>
         </section>
 
-        <h2 class="section-label">Cel</h2>
+        <h2 class="section-label">Cel kalorii</h2>
         <section class="card">
-          <div class="row-between">
-            <label for="goal" style={{ fontSize: '15px', fontWeight: 600 }}>
-              Dzienny cel kalorii
+          <fieldset style={{ border: 'none', margin: 0, padding: 0 }} class="stack">
+            <legend class="visually-hidden">Źródło dziennego celu kalorii</legend>
+            <label class="row" style={{ minHeight: '52px', gap: '12px', opacity: status ? 1 : 0.6 }}>
+              <input
+                type="radio"
+                name="goal-source"
+                checked={goalSource === 'plan' && status !== null}
+                disabled={!status}
+                onChange={() => updateBody({ goalSource: 'plan' })}
+                style={{ width: '20px', height: '20px', margin: 0, accentColor: 'var(--accent)' }}
+              />
+              <span class="stack" style={{ gap: 0 }}>
+                <span style={{ fontSize: '15px', fontWeight: 600 }}>
+                  Z planu wagi{status ? `: ${formatNumber(status.dailyTarget)} kcal dziś` : ''}
+                </span>
+                <span class="small" style={{ color: 'var(--ink-secondary)' }}>
+                  {status ? 'Przelicza się po ważeniu i wpisach z Garmina.' : 'Najpierw ustaw cel w zakładce Waga.'}
+                </span>
+              </span>
             </label>
-            <div class="row">
-              <div style={{ width: '96px' }}>
-                <NumberField
-                  id="goal"
-                  value={s.dailyGoal}
-                  onValue={(n) => n >= 500 && n <= 10000 && updateSettings({ dailyGoal: n })}
-                />
+            <label class="row" style={{ minHeight: '52px', gap: '12px' }}>
+              <input
+                type="radio"
+                name="goal-source"
+                checked={goalSource === 'manual' || status === null}
+                onChange={() => updateBody({ goalSource: 'manual' })}
+                style={{ width: '20px', height: '20px', margin: 0, accentColor: 'var(--accent)' }}
+              />
+              <span style={{ fontSize: '15px', fontWeight: 600 }}>Ręcznie</span>
+            </label>
+          </fieldset>
+          {(goalSource === 'manual' || status === null) && (
+            <div class="row-between">
+              <label for="goal" style={{ fontSize: '15px', fontWeight: 600 }}>
+                Dzienny cel kalorii
+              </label>
+              <div class="row">
+                <div style={{ width: '96px' }}>
+                  <NumberField
+                    id="goal"
+                    value={s.dailyGoal}
+                    onValue={(n) => n >= 500 && n <= 10000 && updateSettings({ dailyGoal: n })}
+                  />
+                </div>
+                <span class="muted">kcal</span>
               </div>
-              <span class="muted">kcal</span>
             </div>
-          </div>
-          <div class="small muted">
-            Domyślnie 2100 kcal: zapotrzebowanie wyliczone wzorem Mifflin-St Jeor dla 80 kg, 183 cm, 36 lat, przy siedzącym
-            trybie życia. To szacunek, możesz go zmienić.
-          </div>
+          )}
+          {!status && (
+            <a class="small" href={hrefs.weightPlan()}>
+              Ustaw plan wagi, a cel kalorii policzy się sam.
+            </a>
+          )}
         </section>
 
         <h2 class="section-label">Dane</h2>
@@ -188,7 +228,7 @@ export function SettingsView() {
           </button>
           <button type="button" class="list-btn danger" onClick={deleteAll}>
             <Icon name="trash" size={20} />
-            Usuń wszystkie posiłki
+            Usuń wszystkie dane
           </button>
           <input
             ref={importRef}

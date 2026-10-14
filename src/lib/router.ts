@@ -6,6 +6,8 @@ export type Route =
   | { name: 'add' }
   | { name: 'meal'; id: string }
   | { name: 'history' }
+  | { name: 'weight' }
+  | { name: 'weightPlan' }
   | { name: 'settings' };
 
 export function parseHash(hash: string): Route {
@@ -22,6 +24,8 @@ export function parseHash(hash: string): Route {
       return parts[1] ? { name: 'meal', id: decodeURIComponent(parts[1]) } : { name: 'day', date: null };
     case 'history':
       return { name: 'history' };
+    case 'weight':
+      return parts[1] === 'plan' ? { name: 'weightPlan' } : { name: 'weight' };
     case 'settings':
       return { name: 'settings' };
     default:
@@ -35,6 +39,8 @@ export const hrefs = {
   add: () => '#/add',
   meal: (id: string) => `#/meal/${encodeURIComponent(id)}`,
   history: () => '#/history',
+  weight: () => '#/weight',
+  weightPlan: () => '#/weight/plan',
   settings: () => '#/settings',
 };
 

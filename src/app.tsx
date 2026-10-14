@@ -4,7 +4,9 @@ import { AddMealView } from './views/AddMealView';
 import { DayView } from './views/DayView';
 import { HistoryView } from './views/HistoryView';
 import { MealView } from './views/MealView';
+import { PlanSetupView } from './views/PlanSetupView';
 import { SettingsView } from './views/SettingsView';
+import { WeightView } from './views/WeightView';
 
 export function App() {
   const r = route.value;
@@ -17,6 +19,10 @@ export function App() {
       return <MealView id={r.id} />;
     case 'history':
       return <HistoryView />;
+    case 'weight':
+      return <WeightView />;
+    case 'weightPlan':
+      return <PlanSetupView />;
     case 'settings':
       return <SettingsView />;
   }
