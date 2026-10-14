@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { DaySummary } from '../components/DaySummary';
 import { Icon } from '../components/Icon';
 import { MealRow } from '../components/MealRow';
@@ -6,6 +6,7 @@ import { TabBar } from '../components/TabBar';
 import { addDays, dayTitle, longDate, todayKey } from '../lib/dates';
 import { mealsForDate, mealsVersion } from '../lib/db';
 import { startDraft } from '../lib/draft';
+import { addPhotos } from '../lib/flow';
 import { sumMeals } from '../lib/nutrition';
 import { hrefs, navigate } from '../lib/router';
 import { settings } from '../lib/settings';
@@ -32,6 +33,16 @@ export function DayView({ date }: { date: string }) {
   const startAdd = () => {
     startDraft(date);
     navigate(hrefs.add());
+  };
+
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const onPhoto = (e: Event) => {
+    const input = e.currentTarget as HTMLInputElement;
+    if (!input.files?.length) return;
+    const files = Array.from(input.files);
+    input.value = '';
+    startAdd();
+    void addPhotos(files);
   };
 
   return (
@@ -78,9 +89,19 @@ export function DayView({ date }: { date: string }) {
 
       <div class="bottom">
         <div class="dock">
-          <button type="button" class="dock-btn" aria-label="Dodaj zdjęcie posiłku" onClick={startAdd}>
+          <button type="button" class="dock-btn" aria-label="Dodaj zdjęcie posiłku" onClick={() => cameraRef.current?.click()}>
             <Icon name="camera" />
           </button>
+          <input
+            ref={cameraRef}
+            class="visually-hidden"
+            type="file"
+            accept="image/*"
+            capture="environment"
+            tabIndex={-1}
+            aria-hidden="true"
+            onChange={onPhoto}
+          />
           <button type="button" class="dock-mic" aria-label="Powiedz, co zjadłeś" onClick={startAdd}>
             <Icon name="mic" size={30} />
           </button>

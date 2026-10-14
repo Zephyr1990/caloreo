@@ -8,7 +8,7 @@ test('adds a meal by hand and shows it on the day screen', async ({ page }) => {
   await page.getByRole('button', { name: 'Wpisz posiłek ręcznie' }).click();
   await expect(page.getByRole('heading', { name: 'Nowy posiłek' })).toBeVisible();
   await page.getByLabel('Opis (mów lub pisz)').fill('Owsianka na mleku');
-  await page.getByRole('button', { name: 'Wpisz ręcznie' }).click();
+  await page.getByRole('button', { name: 'Wpisz ręcznie, bez AI' }).click();
 
   await expect(page.getByRole('heading', { name: 'Sprawdź i zapisz' })).toBeVisible();
   await page.getByLabel('Nazwa posiłku').fill('Owsianka');
