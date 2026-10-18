@@ -4,6 +4,7 @@ import { DayBalance } from '../components/DayBalance';
 import { DaySummary, type PlanLine } from '../components/DaySummary';
 import { Icon } from '../components/Icon';
 import { MealRow } from '../components/MealRow';
+import { QuickAdd } from '../components/QuickAdd';
 import { TabBar } from '../components/TabBar';
 import { addDays, dayTitle, longDate, shortDate, todayKey } from '../lib/dates';
 import { mealsForDate, mealsVersion } from '../lib/db';
@@ -119,6 +120,8 @@ export function DayView({ date }: { date: string }) {
             <Icon name="chevronRight" size={18} />
           </a>
         )}
+
+        {isToday && <QuickAdd date={date} />}
 
         <section class="stack" aria-label="Posiłki">
           <div class="row-between" style={{ padding: '0 4px', alignItems: 'baseline' }}>

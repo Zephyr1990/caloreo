@@ -37,6 +37,7 @@ How to estimate:
 - grams is the weight of the portion as eaten (for drinks, millilitres count as grams).
 - Keep each item's numbers consistent: kcal ≈ 4 × protein + 4 × carbs + 9 × fat (+ 7 kcal per gram of alcohol).
 - When a previous estimate and a correction are given, apply the correction and return the complete corrected list.
+- When the user's earlier food names are given, name an item exactly like one of them if it is the same food (only the name; still estimate the portion eaten now). Otherwise name it as usual.
 
 Output:
 - Write meal_name, item names, portions and notes in Polish. meal_name is short (at most about 5 words).
@@ -51,6 +52,8 @@ export interface AnalyzeInput {
   /** Items the user already has (after their manual edits), when asking for a correction. */
   previousItems?: readonly FoodItem[] | null;
   correction?: string | null;
+  /** Food names the user already has, so the same food keeps the same name. */
+  knownNames?: readonly string[] | null;
 }
 
 export interface AnalyzeOptions {
@@ -95,6 +98,9 @@ export function buildUserContent(input: AnalyzeInput): Anthropic.Beta.BetaConten
     }));
     lines.push(`Poprzednie oszacowanie (z ręcznymi poprawkami użytkownika): ${JSON.stringify(previous)}`);
     lines.push(`Poprawka użytkownika: ${correction}`);
+  }
+  if (input.knownNames?.length) {
+    lines.push(`Nazwy produktów, których użytkownik już używa: ${JSON.stringify(input.knownNames)}`);
   }
   content.push({ type: 'text', text: lines.join('\n') });
   return content;

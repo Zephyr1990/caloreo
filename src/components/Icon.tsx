@@ -78,6 +78,19 @@ const PATHS = {
       <path d="M11 18h2" />
     </>
   ),
+  eye: (
+    <>
+      <path d="M3 12s4-6 9-6 9 6 9 6-4 6-9 6-9-6-9-6z" />
+      <circle cx="12" cy="12" r="3" />
+    </>
+  ),
+  eyeOff: (
+    <>
+      <path d="M3 3l18 18" />
+      <path d="M10.6 6.1A10 10 0 0 1 12 6c5 0 9 6 9 6a17 17 0 0 1-3 3.4M6.6 6.6C4.1 8.3 3 12 3 12s4 6 9 6a9 9 0 0 0 4.2-1" />
+      <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+    </>
+  ),
 } as const;
 
 export type IconName = keyof typeof PATHS | 'stop';

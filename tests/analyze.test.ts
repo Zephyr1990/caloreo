@@ -63,6 +63,13 @@ describe('buildUserContent', () => {
     expect(text).toContain('Opis użytkownika: jajecznica z 3 jaj');
   });
 
+  it('lists the names the user already uses, only when there are some', () => {
+    const withNames = buildUserContent({ description: 'serek', photos: [], mealType: 'breakfast', knownNames: ['Serek wiejski', 'Cappuccino'] });
+    expect((withNames[0] as { text: string }).text).toContain('Nazwy produktów, których użytkownik już używa: ["Serek wiejski","Cappuccino"]');
+    const without = buildUserContent({ description: 'serek', photos: [], mealType: 'breakfast', knownNames: [] });
+    expect((without[0] as { text: string }).text).not.toContain('Nazwy produktów');
+  });
+
   it('asks to judge from photos when there is no description', () => {
     const content = buildUserContent({ description: '  ', photos: [PHOTO], mealType: 'lunch' });
     expect((content[1] as { text: string }).text).toContain('Brak opisu');

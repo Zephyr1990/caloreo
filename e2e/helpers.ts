@@ -57,6 +57,9 @@ export interface SeedMeal {
   daysAgo: number;
   time: string;
   kcal: number;
+  type?: string;
+  /** Defaults to one item named like the meal. */
+  items?: { name: string; kcal: number; portion?: string }[];
 }
 
 /** Opens the app database (version 2) in the page and writes records into a store. */
@@ -104,11 +107,20 @@ export async function seedMeals(page: Page, meals: SeedMeal[]): Promise<void> {
     meals.map((m) => ({
       id: m.id,
       name: m.name,
-      type: 'lunch',
+      type: m.type ?? 'lunch',
       date: dateKey(m.daysAgo),
       time: m.time,
       description: '',
-      items: [{ id: `${m.id}-1`, name: m.name, portion: '', grams: 100, kcal: m.kcal, protein: 10, fat: 10, carbs: 10 }],
+      items: (m.items ?? [{ name: m.name, kcal: m.kcal }]).map((it, i) => ({
+        id: `${m.id}-${i + 1}`,
+        name: it.name,
+        portion: it.portion ?? '',
+        grams: 100,
+        kcal: it.kcal,
+        protein: 10,
+        fat: 10,
+        carbs: 10,
+      })),
       notes: '',
       confidence: null,
       source: 'manual',

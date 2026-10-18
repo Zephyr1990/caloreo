@@ -8,6 +8,7 @@ export type Route =
   | { name: 'history' }
   | { name: 'weight' }
   | { name: 'weightPlan' }
+  | { name: 'frequent' }
   | { name: 'settings' };
 
 export function parseHash(hash: string): Route {
@@ -26,6 +27,8 @@ export function parseHash(hash: string): Route {
       return { name: 'history' };
     case 'weight':
       return parts[1] === 'plan' ? { name: 'weightPlan' } : { name: 'weight' };
+    case 'frequent':
+      return { name: 'frequent' };
     case 'settings':
       return { name: 'settings' };
     default:
@@ -41,6 +44,7 @@ export const hrefs = {
   history: () => '#/history',
   weight: () => '#/weight',
   weightPlan: () => '#/weight/plan',
+  frequent: () => '#/frequent',
   settings: () => '#/settings',
 };
 

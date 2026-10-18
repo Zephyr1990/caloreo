@@ -13,6 +13,8 @@ export interface Settings {
   model: ModelId;
   /** Daily calorie goal in kcal. */
   dailyGoal: number;
+  /** Keys of frequent-food suggestions the user hid. */
+  hiddenFrequent: string[];
 }
 
 /**
@@ -25,7 +27,10 @@ export const DEFAULT_SETTINGS: Settings = {
   apiKey: '',
   model: 'claude-haiku-5-5',
   dailyGoal: DEFAULT_GOAL,
+  hiddenFrequent: [],
 };
+
+const MAX_HIDDEN = 500;
 
 const STORAGE_KEY = 'caloreo.settings';
 
@@ -37,6 +42,10 @@ export function parseSettings(raw: unknown): Settings {
     if (MODELS.some((m) => m.id === r.model)) s.model = r.model as ModelId;
     if (typeof r.dailyGoal === 'number' && Number.isFinite(r.dailyGoal) && r.dailyGoal >= 500 && r.dailyGoal <= 10000) {
       s.dailyGoal = Math.round(r.dailyGoal);
+    }
+    if (Array.isArray(r.hiddenFrequent)) {
+      const keys = r.hiddenFrequent.filter((k): k is string => typeof k === 'string' && k !== '');
+      s.hiddenFrequent = [...new Set(keys)].slice(-MAX_HIDDEN);
     }
   }
   return s;
@@ -61,4 +70,12 @@ export function updateSettings(patch: Partial<Settings>): void {
   } catch {
     // Private mode or blocked storage: settings live only for this session.
   }
+}
+
+export function hideSuggestion(key: string): void {
+  updateSettings({ hiddenFrequent: [...settings.value.hiddenFrequent, key] });
+}
+
+export function unhideSuggestion(key: string): void {
+  updateSettings({ hiddenFrequent: settings.value.hiddenFrequent.filter((k) => k !== key) });
 }

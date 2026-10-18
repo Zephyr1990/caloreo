@@ -5,7 +5,7 @@ import { DEFAULT_SETTINGS, parseSettings } from '../src/lib/settings';
 
 describe('parseSettings', () => {
   it('uses Haiku 5.5 and 2100 kcal by default', () => {
-    expect(parseSettings(null)).toEqual({ apiKey: '', model: 'claude-haiku-5-5', dailyGoal: 2100 });
+    expect(parseSettings(null)).toEqual({ apiKey: '', model: 'claude-haiku-5-5', dailyGoal: 2100, hiddenFrequent: [] });
     expect(DEFAULT_SETTINGS.model).toBe('claude-haiku-5-5');
   });
 
@@ -14,8 +14,10 @@ describe('parseSettings', () => {
       apiKey: 'sk-ant-x',
       model: 'claude-opus-5-5',
       dailyGoal: 1800,
+      hiddenFrequent: [],
     });
     expect(parseSettings({ model: 'gpt', dailyGoal: 50 })).toEqual(DEFAULT_SETTINGS);
+    expect(parseSettings({ hiddenFrequent: ['item:a', 3, '', 'item:a', 'meal:b|c'] }).hiddenFrequent).toEqual(['item:a', 'meal:b|c']);
   });
 });
 
@@ -28,6 +30,7 @@ describe('parseHash', () => {
     expect(parseHash('#/meal/abc%20d')).toEqual({ name: 'meal', id: 'abc d' });
     expect(parseHash('#/history')).toEqual({ name: 'history' });
     expect(parseHash('#/settings')).toEqual({ name: 'settings' });
+    expect(parseHash('#/frequent')).toEqual({ name: 'frequent' });
     expect(parseHash('#/nope')).toEqual({ name: 'day', date: null });
   });
 });

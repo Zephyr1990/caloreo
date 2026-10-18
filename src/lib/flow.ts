@@ -1,4 +1,7 @@
-import { addDraft, patchDraft, type DraftPhoto } from './draft';
+import { addDays, todayKey } from './dates';
+import { mealsInRange } from './db';
+import { addDraft, patchDraft, pickedItems, type DraftPhoto } from './draft';
+import { FREQUENT_WINDOW_DAYS, frequentNames } from './frequent';
 import { newId } from './id';
 import { settings } from './settings';
 
@@ -51,6 +54,7 @@ export async function runAnalysis(correction?: string): Promise<void> {
 
   try {
     const { analyzeMeal, analysisToDraft } = await import('./analyze');
+    const knownNames = await knownFoodNames();
     const analysis = await analyzeMeal(
       {
         description: d.description,
@@ -58,6 +62,7 @@ export async function runAnalysis(correction?: string): Promise<void> {
         mealType: previous?.type ?? d.type,
         previousItems: previous?.items ?? null,
         correction: correction ?? null,
+        knownNames,
       },
       { apiKey: s.apiKey, model: s.model, signal: ctrl.signal },
     );
@@ -83,6 +88,8 @@ export async function runAnalysis(correction?: string): Promise<void> {
       },
       s.model,
     );
+    // Picked frequent foods join the result as they are; a correction already has them.
+    if (!previous) meal.items = [...meal.items, ...pickedItems(d)];
     patchDraft({ phase: 'review', meal, description, error: null });
   } catch (e) {
     if (controller !== ctrl) return;
@@ -96,4 +103,14 @@ export async function runAnalysis(correction?: string): Promise<void> {
 
 export function cancelAnalysis(): void {
   controller?.abort();
+}
+
+/** The user's frequent food names, so the AI can reuse them. Missing history is not an error. */
+async function knownFoodNames(): Promise<string[]> {
+  try {
+    const today = todayKey();
+    return frequentNames(await mealsInRange(addDays(today, -(FREQUENT_WINDOW_DAYS - 1)), today), today);
+  } catch {
+    return [];
+  }
 }
