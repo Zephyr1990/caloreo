@@ -5,11 +5,14 @@ import {
   baseBurn,
   bmr,
   dayBalance,
+  dayEnergy,
   daysBetween,
   declaredActivityKcal,
   evaluatePlan,
+  forecastBalance,
   maxHealthyWeight,
   minHealthyWeight,
+  planFit,
   planStatus,
   proposePlans,
   summarizeBalance,
@@ -255,5 +258,70 @@ describe('balance', () => {
     expect(weightOn(w, '2026-10-13', 81)).toBe(81);
     expect(weightOn(w, '2026-10-20', 81)).toBe(80);
     expect(weightOn(w, '2026-10-25', 81)).toBe(79.2);
+  });
+});
+
+describe('dayEnergy', () => {
+  const entry = (date: string, activeKcal: number | null): ActivityEntry => ({ date, activeKcal, steps: null, updatedAt: '' });
+  const BASE = 1768.75 * 1.2;
+
+  it('uses the Garmin calories entered for the day', () => {
+    const e = dayEnergy(ME, 80, TODAY, 1860, [entry(TODAY, 940), entry('2026-10-13', 500)]);
+    expect(e.activitySource).toBe('entered');
+    expect(e.burned).toBeCloseTo(BASE + 940);
+    expect(e.balance).toBeCloseTo(BASE + 940 - 1860);
+  });
+
+  it('estimates from the average of the last 7 days before the entry', () => {
+    // 7-13 Oct are the 7 days before; 6 Oct and a later day do not count.
+    const activity = [
+      entry('2026-10-06', 2000),
+      entry('2026-10-08', 600),
+      entry('2026-10-10', 700),
+      entry('2026-10-12', null),
+      entry('2026-10-13', 740),
+      entry('2026-10-15', 3000),
+    ];
+    const e = dayEnergy(ME, 80, TODAY, 540, activity);
+    expect(e.activitySource).toBe('average');
+    expect(e.activityDays).toBe(3);
+    expect(e.activeKcal).toBeCloseTo(680);
+    expect(e.balance).toBeCloseTo(BASE + 680 - 540);
+  });
+
+  it('falls back to the declared level with fewer than 3 days in the last week', () => {
+    const e = dayEnergy(ME, 80, TODAY, 540, [entry('2026-10-12', 700), entry('2026-10-13', 700)]);
+    expect(e.activitySource).toBe('declared');
+    expect(e.activityDays).toBe(2);
+    expect(e.activeKcal).toBeCloseTo(DECLARED);
+  });
+
+  it('forecasts the balance if the rest of the goal is eaten', () => {
+    const e = dayEnergy(ME, 80, TODAY, 540, [entry('2026-10-11', 680), entry('2026-10-12', 680), entry('2026-10-13', 680)]);
+    expect(forecastBalance(e, 1920)).toBeCloseTo(BASE + 680 - 1920);
+    // Over the goal already: nothing more is assumed.
+    const over = { ...e, eaten: 2500 };
+    expect(forecastBalance(over, 1920)).toBeCloseTo(BASE + 680 - 2500);
+  });
+});
+
+describe('planFit', () => {
+  it('compares a deficit with a deficit plan', () => {
+    expect(planFit(1200, 880)).toBe('more');
+    expect(planFit(900, 880)).toBe('on');
+    expect(planFit(840, 880)).toBe('on');
+    expect(planFit(500, 880)).toBe('less');
+    expect(planFit(-200, 880)).toBe('opposite');
+  });
+
+  it('compares a surplus with a gain plan', () => {
+    expect(planFit(-500, -300)).toBe('more');
+    expect(planFit(-320, -300)).toBe('on');
+    expect(planFit(-100, -300)).toBe('less');
+    expect(planFit(200, -300)).toBe('opposite');
+  });
+
+  it('has nothing to compare without a deficit or surplus in the plan', () => {
+    expect(planFit(500, 0)).toBeNull();
   });
 });

@@ -16,6 +16,7 @@ To aplikacja webowa (PWA). Instaluje się z Safari na ekran początkowy, bez App
 - **Ustawienia.** Klucz API z przyciskiem „Sprawdź klucz”, wybór modelu, dzienny cel, eksport i import kopii (JSON).
 - **Plan wagi** (zakładka „Waga”). Podajesz wagę obecną, docelową i datę; aplikacja liczy dzienny deficyt (albo nadwyżkę) i dzienny cel kalorii, sprawdza plan i proponuje poprawiony, gdy nie mieści się w progach. Po każdym ważeniu plan przelicza się od nowa.
 - **Aktywność z Garmina.** Na ekranie „Dziś” wpisujesz kalorie aktywne dnia (wieczorem albo następnego dnia), opcjonalnie kroki. Aplikacja liczy bilans dnia, średni rzeczywisty deficyt i porównuje go z planem.
+- **Bilans dnia na ekranie „Dziś”.** W karcie podsumowania, pod paskiem kalorii: spalone, zjedzone i deficyt (albo nadwyżka), porównanie z planem i średnia z 7 dni w wierszu planu. Przed wpisaniem danych z Garmina bilans jest szacunkiem z prognozą na koniec dnia.
 - **Tryb ciemny** zgodny z ustawieniem iPhone'a.
 
 Domyślne ustawienia:
@@ -32,6 +33,9 @@ Domyślne ustawienia:
 5. **Dzienny cel jedzenia** = podstawa + średnia aktywność − potrzebny deficyt.
    - Średnia aktywność pochodzi z wpisów z ostatnich 14 dni, gdy jest ich co najmniej 7.
    - Wcześniej szacuję ją z poziomu aktywności podanego w profilu.
+6. **Bilans na teraz** (dzień bez wpisu z Garmina):
+   - kalorie aktywne to średnia z ostatnich 7 dni, gdy są w nich co najmniej 3 wpisy, a wcześniej poziom aktywności z profilu;
+   - prognoza na koniec dnia zakłada, że zjesz resztę dziennego celu.
 
 Progi sprawdzania planu:
 

@@ -1174,3 +1174,121 @@ a {
   align-items: center;
   justify-content: center;
 }
+
+/* Day balance in the summary card */
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 26px;
+  padding: 0 10px;
+  border-radius: 13px;
+  background: var(--surface-2);
+  color: var(--ink-secondary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.tag.good {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.kpi {
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  padding: 9px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+  text-align: left;
+  color: var(--ink);
+  font: inherit;
+}
+
+button.kpi {
+  cursor: pointer;
+}
+
+.kpi.estimated {
+  border-style: dashed;
+  border-color: var(--line-strong);
+}
+
+.kpi-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 12px;
+  color: var(--ink-secondary);
+}
+
+.kpi-value {
+  font-size: 18px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.kpi-unit {
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+
+.kpi.good {
+  background: var(--accent-soft);
+}
+
+.kpi.good.estimated {
+  border-color: var(--accent-light);
+}
+
+.kpi.good .kpi-label,
+.kpi.good .kpi-value,
+.kpi.good .kpi-unit {
+  color: var(--accent);
+}
+
+.kpi.good:not(.estimated) .kpi-value {
+  font-weight: 800;
+}
+
+.kpi.over {
+  background: var(--warn-soft);
+}
+
+.kpi.over .kpi-label,
+.kpi.over .kpi-value,
+.kpi.over .kpi-unit {
+  color: var(--warn);
+}
+
+.kpi.over .kpi-label {
+  font-weight: 700;
+}
+
+.fit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-secondary);
+}
+
+.fit.good {
+  color: var(--accent);
+}
+
+.fit.over {
+  color: var(--warn);
+}

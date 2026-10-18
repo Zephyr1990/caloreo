@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'preact/hooks';
 import { body, type BodySettings } from './body';
-import { todayKey } from './dates';
-import { allActivity, allWeights, bodyVersion } from './db';
+import { addDays, todayKey } from './dates';
+import { allActivity, allWeights, bodyVersion, mealsInRange, mealsVersion } from './db';
+import { sumItems } from './nutrition';
 import { settings } from './settings';
-import type { ActivityEntry, WeightEntry } from './types';
-import { planStatus, type PlanStatus } from './weightPlan';
+import type { ActivityEntry, Meal, Profile, WeightEntry } from './types';
+import { dayBalance, planStatus, summarizeBalance, weightOn, type BalanceSummary, type PlanStatus } from './weightPlan';
 
 export interface BodyData {
   weights: WeightEntry[];
@@ -47,4 +48,42 @@ export function useGoal(): Goal {
   const status = statusFor(b, data);
   const fromPlan = b.goalSource === 'plan' && status !== null;
   return { goal: fromPlan ? status.dailyTarget : settings.value.dailyGoal, fromPlan, status, data };
+}
+
+/** Balance of the full days with meals and Garmin data: the last 7 days and since the plan start. */
+export function useBalanceSummary(
+  profile: Profile | null,
+  status: PlanStatus | null,
+  data: BodyData | null,
+  today: string = todayKey(),
+): BalanceSummary | null {
+  const version = mealsVersion.value;
+  const weekAgo = addDays(today, -7);
+  const since = status?.plan.startDate ?? weekAgo;
+  const from = since < weekAgo ? since : weekAgo;
+  const ready = profile !== null && status !== null;
+  const [meals, setMeals] = useState<Meal[] | null>(null);
+
+  useEffect(() => {
+    if (!ready) return;
+    let alive = true;
+    mealsInRange(from, addDays(today, -1)).then((m) => alive && setMeals(m));
+    return () => {
+      alive = false;
+    };
+  }, [ready, from, today, version]);
+
+  if (!profile || !status || !data || !meals) return null;
+  const eatenByDate = new Map<string, number>();
+  for (const m of meals) eatenByDate.set(m.date, (eatenByDate.get(m.date) ?? 0) + sumItems(m.items).kcal);
+  const days = [...eatenByDate.entries()].map(([date, eaten]) =>
+    dayBalance(
+      profile,
+      weightOn(data.weights, date, status.plan.startWeight),
+      date,
+      eaten,
+      data.activity.find((a) => a.date === date),
+    ),
+  );
+  return summarizeBalance(days, today, since);
 }

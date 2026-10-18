@@ -1,3 +1,4 @@
+import type { ComponentChildren } from 'preact';
 import { energyShares, formatGrams, formatNumber, goalProgress } from '../lib/nutrition';
 import { hrefs } from '../lib/router';
 import type { Totals } from '../lib/types';
@@ -13,11 +14,14 @@ export function DaySummary({
   goal,
   label,
   planLine = null,
+  children,
 }: {
   totals: Totals;
   goal: number;
   label: string;
   planLine?: PlanLine | null;
+  /** Shown under the calorie meter, e.g. the day balance. */
+  children?: ComponentChildren;
 }) {
   const p = goalProgress(totals.kcal, goal);
   const over = p.over > 0;
@@ -46,6 +50,7 @@ export function DaySummary({
         )}
         <span class="muted">{p.percent}% celu</span>
       </div>
+      {children}
       {planLine && (
         <a class="plan-line" href={hrefs.weight()}>
           <span class="plan-line-icon">
