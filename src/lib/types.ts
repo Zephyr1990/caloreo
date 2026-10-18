@@ -47,6 +47,8 @@ export interface Totals {
   carbs: number;
 }
 
+export type MealSource = 'ai' | 'manual' | 'frequent';
+
 /** Everything the meal editor works on, before the meal gets an id. */
 export interface MealDraft {
   name: string;
@@ -61,7 +63,8 @@ export interface MealDraft {
   /** Assumptions made by the AI. */
   notes: string;
   confidence: Confidence | null;
-  source: 'ai' | 'manual';
+  /** frequent: built from a suggestion of frequent foods, without AI. */
+  source: MealSource;
   model: string | null;
   /** Small JPEG data URL of the first photo. */
   thumbnail: string | null;

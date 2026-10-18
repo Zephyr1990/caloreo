@@ -90,7 +90,8 @@ test('activity entered the next day gives the day balance and clears the reminde
 
   await page.getByRole('link', { name: 'Uzupełnij aktywność z wczoraj' }).click();
   await expect(page.getByRole('heading', { name: 'Wczoraj' })).toBeVisible();
-  await expect(page.getByText('Wpisz kalorie aktywne, aby zobaczyć bilans dnia.')).toBeVisible();
+  const summary = page.getByLabel('Podsumowanie dnia');
+  await expect(summary.getByText('szacunek', { exact: true })).toBeVisible();
 
   await page.getByLabel('Kalorie aktywne').fill('700');
   await page.getByLabel('Kroki (opcjonalnie)').fill('11000');
@@ -98,11 +99,14 @@ test('activity entered the next day gives the day balance and clears the reminde
   await expect(page.getByRole('button', { name: 'Zapisano' })).toBeVisible();
 
   // Base for a 36-year-old man, 80 kg, 183 cm: 1768,75 × 1,2 = 2122,5 kcal.
-  const balance = page.getByLabel('Bilans dnia');
-  await expect(balance).toContainText('2 123 kcal');
-  await expect(balance).toContainText('+ 700 kcal');
-  await expect(balance).toContainText('Deficyt dnia');
-  await expect(balance).toContainText('1 323 kcal');
+  await expect(summary.getByText('z Garmina', { exact: true })).toBeVisible();
+  const balance = page.getByRole('group', { name: 'Bilans dnia' });
+  await expect(balance).toContainText('Deficyt');
+  await expect(balance).toContainText('1 323');
+  await balance.getByRole('button', { name: /Spalone/ }).click();
+  const breakdown = page.getByLabel('Rozbicie spalonych');
+  await expect(breakdown).toContainText('2 123 kcal');
+  await expect(breakdown).toContainText('+ 700 kcal');
 
   await page.getByRole('button', { name: 'Następny dzień' }).click();
   await expect(page.getByRole('heading', { name: 'Dziś' })).toBeVisible();

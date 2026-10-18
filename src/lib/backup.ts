@@ -5,8 +5,11 @@ import { todayKey } from './dates';
 import { MODELS, settings, updateSettings, type ModelId } from './settings';
 import type { ActivityEntry, Meal, WeightEntry } from './types';
 
-/** 1: meals and settings. 2: also weigh-ins, activity, profile and weight plan. */
-export const BACKUP_VERSION = 2;
+/**
+ * 1: meals and settings. 2: also weigh-ins, activity, profile and weight plan.
+ * 3: meals added from frequent suggestions and the hidden suggestions.
+ */
+export const BACKUP_VERSION = 3;
 
 const ItemSchema = z.object({
   id: z.string(),
@@ -29,7 +32,7 @@ const MealSchema = z.object({
   items: z.array(ItemSchema),
   notes: z.string(),
   confidence: z.enum(['low', 'medium', 'high']).nullable(),
-  source: z.enum(['ai', 'manual']),
+  source: z.enum(['ai', 'manual', 'frequent']),
   model: z.string().nullable(),
   thumbnail: z.string().nullable(),
   createdAt: z.string(),
@@ -57,6 +60,7 @@ const BackupSchema = z.object({
     .object({
       model: z.string().optional(),
       dailyGoal: z.number().optional(),
+      hiddenFrequent: z.array(z.string()).optional(),
     })
     .optional(),
   meals: z.array(MealSchema),
@@ -71,7 +75,7 @@ export interface Backup {
   activity: ActivityEntry[];
   /** null for version 1 backups, which had no profile or plan. */
   body: BodySettings | null;
-  settings: { model?: ModelId; dailyGoal?: number };
+  settings: { model?: ModelId; dailyGoal?: number; hiddenFrequent?: string[] };
 }
 
 export interface BackupData {
@@ -84,13 +88,17 @@ export interface BackupData {
 export class BackupError extends Error {}
 
 /** The API key is never part of a backup. */
-export function buildBackup(data: BackupData, s: { model: string; dailyGoal: number }, now = new Date()): string {
+export function buildBackup(
+  data: BackupData,
+  s: { model: string; dailyGoal: number; hiddenFrequent?: readonly string[] },
+  now = new Date(),
+): string {
   return JSON.stringify(
     {
       app: 'caloreo',
       version: BACKUP_VERSION,
       exportedAt: now.toISOString(),
-      settings: { model: s.model, dailyGoal: s.dailyGoal },
+      settings: { model: s.model, dailyGoal: s.dailyGoal, hiddenFrequent: s.hiddenFrequent ?? [] },
       meals: data.meals,
       weights: data.weights ?? [],
       activity: data.activity ?? [],
@@ -124,6 +132,7 @@ export function parseBackup(text: string): Backup {
     settings: {
       model: MODELS.some((m) => m.id === s.model) ? (s.model as ModelId) : undefined,
       dailyGoal: s.dailyGoal,
+      hiddenFrequent: s.hiddenFrequent,
     },
   };
 }
@@ -167,6 +176,9 @@ export async function importBackup(file: Blob): Promise<number> {
   const patch: Parameters<typeof updateSettings>[0] = {};
   if (backup.settings.model) patch.model = backup.settings.model;
   if (backup.settings.dailyGoal) patch.dailyGoal = backup.settings.dailyGoal;
+  if (backup.settings.hiddenFrequent?.length) {
+    patch.hiddenFrequent = [...settings.value.hiddenFrequent, ...backup.settings.hiddenFrequent];
+  }
   updateSettings(patch);
   return backup.meals.length;
 }

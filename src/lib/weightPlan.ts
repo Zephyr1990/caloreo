@@ -27,6 +27,11 @@ export const LIMITS = {
 /** Activity average uses the last N full days and needs at least `ACTIVITY_MIN_DAYS` entries. */
 export const ACTIVITY_WINDOW_DAYS = 14;
 export const ACTIVITY_MIN_DAYS = 7;
+/** The day balance estimate uses a shorter, more recent window. */
+export const ESTIMATE_WINDOW_DAYS = 7;
+export const ESTIMATE_MIN_DAYS = 3;
+/** A day within this many kcal of the plan's daily deficit or surplus counts as on plan. */
+export const PLAN_FIT_TOLERANCE = 50;
 
 export const ACTIVITY_LEVELS: readonly { id: ActivityLevel; label: string; factor: number }[] = [
   { id: 'sedentary', label: 'Siedzący tryb życia', factor: 1.2 },
@@ -85,20 +90,22 @@ export interface ActivityAverage {
 }
 
 /**
- * Average daily active calories over the last ACTIVITY_WINDOW_DAYS full days (today excluded).
- * Falls back to the declared activity level until there are ACTIVITY_MIN_DAYS entries.
+ * Average daily active calories over the last `windowDays` full days (today excluded).
+ * Falls back to the declared activity level until there are `minDays` entries.
  */
 export function averageActivity(
   entries: readonly ActivityEntry[],
   profile: Profile,
   weightKg: number,
   today: string,
+  windowDays: number = ACTIVITY_WINDOW_DAYS,
+  minDays: number = ACTIVITY_MIN_DAYS,
 ): ActivityAverage {
-  const from = addDays(today, -ACTIVITY_WINDOW_DAYS);
+  const from = addDays(today, -windowDays);
   const values = entries
     .filter((e) => e.date >= from && e.date < today && e.activeKcal !== null)
     .map((e) => e.activeKcal as number);
-  if (values.length >= ACTIVITY_MIN_DAYS) {
+  if (values.length >= minDays) {
     return { kcal: values.reduce((a, b) => a + b, 0) / values.length, source: 'garmin', count: values.length };
   }
   return { kcal: declaredActivityKcal(profile, weightKg, today), source: 'declared', count: values.length };
@@ -505,4 +512,67 @@ export function summarizeBalance(days: readonly DayBalance[], today: string, sin
     countSum: sinceStart.length,
     kgEstimate: sum / KCAL_PER_KG,
   };
+}
+
+export interface DayEnergy {
+  date: string;
+  eaten: number;
+  base: number;
+  activeKcal: number;
+  /** entered: Garmin data for this day; average: the last days' Garmin data; declared: the profile's activity level. */
+  activitySource: 'entered' | 'average' | 'declared';
+  /** Days with Garmin data behind an `average`. */
+  activityDays: number;
+  burned: number;
+  /** burned − eaten: positive is a deficit. */
+  balance: number;
+}
+
+/**
+ * Energy balance of one day. Uses the day's Garmin active calories once entered, until then
+ * estimates them from the average of the previous ESTIMATE_WINDOW_DAYS days.
+ */
+export function dayEnergy(
+  profile: Profile,
+  weightKg: number,
+  date: string,
+  eaten: number,
+  activity: readonly ActivityEntry[],
+): DayEnergy {
+  const base = baseBurn(profile, weightKg, date);
+  const entered = activity.find((a) => a.date === date)?.activeKcal ?? null;
+  if (entered !== null) {
+    const burned = base + entered;
+    return { date, eaten, base, activeKcal: entered, activitySource: 'entered', activityDays: 1, burned, balance: burned - eaten };
+  }
+  const avg = averageActivity(activity, profile, weightKg, date, ESTIMATE_WINDOW_DAYS, ESTIMATE_MIN_DAYS);
+  const burned = base + avg.kcal;
+  return {
+    date,
+    eaten,
+    base,
+    activeKcal: avg.kcal,
+    activitySource: avg.source === 'garmin' ? 'average' : 'declared',
+    activityDays: avg.count,
+    burned,
+    balance: burned - eaten,
+  };
+}
+
+/** End-of-day balance if the rest of the calorie goal is eaten (nothing more once it is reached). */
+export function forecastBalance(day: DayEnergy, goal: number): number {
+  return day.burned - Math.max(day.eaten, goal);
+}
+
+export type PlanFit = 'more' | 'on' | 'less' | 'opposite';
+
+/** How a balance compares with the plan's daily deficit (positive) or surplus (negative). */
+export function planFit(balance: number, planDelta: number, tolerance: number = PLAN_FIT_TOLERANCE): PlanFit | null {
+  if (planDelta === 0) return null;
+  const dir = Math.sign(planDelta);
+  const done = balance * dir;
+  const needed = planDelta * dir;
+  if (done < 0) return 'opposite';
+  if (Math.abs(done - needed) <= tolerance) return 'on';
+  return done > needed ? 'more' : 'less';
 }

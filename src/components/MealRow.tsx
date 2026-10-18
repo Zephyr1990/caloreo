@@ -17,13 +17,14 @@ export function MealRow({ meal }: { meal: Meal }) {
         {meal.thumbnail ? (
           <img src={meal.thumbnail} alt="" />
         ) : (
-          <Icon name={meal.source === 'ai' ? 'mic' : 'pencil'} size={20} />
+          <Icon name={meal.source === 'ai' ? 'mic' : meal.source === 'frequent' ? 'repeat' : 'pencil'} size={20} />
         )}
       </span>
       <span class="meal-main">
         <span class="meal-name">{mealTitle(meal)}</span>
         <span class="meal-meta">
           {mealTypeLabel(meal.type)} · {meal.time}
+          {meal.source === 'frequent' && ' · z podpowiedzi'}
         </span>
       </span>
       <span class="kcal-col">

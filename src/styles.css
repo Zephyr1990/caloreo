@@ -1174,3 +1174,230 @@ a {
   align-items: center;
   justify-content: center;
 }
+
+/* Day balance in the summary card */
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 26px;
+  padding: 0 10px;
+  border-radius: 13px;
+  background: var(--surface-2);
+  color: var(--ink-secondary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.tag.good {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.kpi {
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  padding: 9px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+  text-align: left;
+  color: var(--ink);
+  font: inherit;
+}
+
+button.kpi {
+  cursor: pointer;
+}
+
+.kpi.estimated {
+  border-style: dashed;
+  border-color: var(--line-strong);
+}
+
+.kpi-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 12px;
+  color: var(--ink-secondary);
+}
+
+.kpi-value {
+  font-size: 18px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.kpi-unit {
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+
+.kpi.good {
+  background: var(--accent-soft);
+}
+
+.kpi.good.estimated {
+  border-color: var(--accent-light);
+}
+
+.kpi.good .kpi-label,
+.kpi.good .kpi-value,
+.kpi.good .kpi-unit {
+  color: var(--accent);
+}
+
+.kpi.good:not(.estimated) .kpi-value {
+  font-weight: 800;
+}
+
+.kpi.over {
+  background: var(--warn-soft);
+}
+
+.kpi.over .kpi-label,
+.kpi.over .kpi-value,
+.kpi.over .kpi-unit {
+  color: var(--warn);
+}
+
+.kpi.over .kpi-label {
+  font-weight: 700;
+}
+
+.fit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-secondary);
+}
+
+.fit.good {
+  color: var(--accent);
+}
+
+.fit.over {
+  color: var(--warn);
+}
+
+/* Frequent foods */
+
+.quick-strip {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  margin: 0 -16px;
+  padding: 0 16px 2px;
+  scrollbar-width: none;
+}
+
+.quick-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.quick-card {
+  width: 150px;
+  flex: none;
+  min-height: 124px;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 8px;
+  text-align: left;
+  color: var(--ink);
+  scroll-snap-align: start;
+}
+
+.quick-title {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.quick-kcal {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.quick-kcal span {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-muted);
+}
+
+.quick-plus {
+  width: 32px;
+  height: 32px;
+  border-radius: 16px;
+  background: var(--accent);
+  color: var(--on-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chip-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.list-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 4px 6px 4px 14px;
+  display: flex;
+  flex-direction: column;
+}
+
+.frequent-row {
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.frequent-row:last-child {
+  border-bottom: none;
+}
+
+.btn-small {
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 22px;
+  font-size: 14px;
+  gap: 6px;
+}
+
+.icon-btn {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border: none;
+  border-radius: 22px;
+  background: transparent;
+  color: var(--ink-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

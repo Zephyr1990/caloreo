@@ -3,16 +3,26 @@ import { Icon } from '../components/Icon';
 import { MealEditor } from '../components/MealEditor';
 import { mealTitle } from '../components/MealRow';
 import { MicPanel } from '../components/MicPanel';
+import { toPicked } from '../components/QuickAdd';
 import { todayKey } from '../lib/dates';
 import { requestPersistentStorage, saveMeal } from '../lib/db';
-import { addDraft, manualMealFromDraft, patchDraft, startDraft, type AddDraft } from '../lib/draft';
+import {
+  addDraft,
+  frequentMealFromDraft,
+  manualMealFromDraft,
+  patchDraft,
+  startDraft,
+  togglePicked,
+  type AddDraft,
+} from '../lib/draft';
 import { addPhotos, cancelAnalysis, MAX_PHOTOS, removePhoto, runAnalysis } from '../lib/flow';
 import { newId } from '../lib/id';
 import { formatNumber, sumItems } from '../lib/nutrition';
 import { hrefs, navigate } from '../lib/router';
 import { MODELS, settings } from '../lib/settings';
 import { cancelListening, speech, stopListening } from '../lib/speech';
-import { MEAL_TYPES, type MealDraft } from '../lib/types';
+import { MEAL_TYPES, type MealDraft, type MealType } from '../lib/types';
+import { useFrequent } from '../lib/useFrequent';
 
 export function AddMealView() {
   const d = addDraft.value;
@@ -31,11 +41,16 @@ export function AddMealView() {
 function Compose({ d, onClose }: { d: AddDraft; onClose: () => void }) {
   const hasKey = settings.value.apiKey !== '';
   const listening = speech.value.listening && speech.value.target === 'description';
-  const canAnalyze = hasKey && (d.description.trim() !== '' || d.photos.length > 0 || listening);
+  const hasInput = d.description.trim() !== '' || d.photos.length > 0 || listening;
+  const canAnalyze = hasKey && hasInput;
+  const pickedKcal = d.picked.reduce((sum, p) => sum + p.kcal, 0);
+  // Only picked foods: nothing for the AI to count, go straight to the review.
+  const onlyPicked = d.picked.length > 0 && !hasInput;
   const analyze = async () => {
     await stopListening();
     void runAnalysis();
   };
+  const usePicked = () => patchDraft({ phase: 'review', meal: frequentMealFromDraft(addDraft.value), error: null });
   const manual = async () => {
     await stopListening();
     const current = addDraft.value;
@@ -72,9 +87,11 @@ function Compose({ d, onClose }: { d: AddDraft; onClose: () => void }) {
           </div>
         </fieldset>
 
+        <FrequentPicker d={d} explain={hasKey && hasInput} />
+
         <div class="field">
           <label class="label" for="description">
-            Opis (mów lub pisz)
+            {d.picked.length > 0 ? 'Coś jeszcze? (mów lub pisz)' : 'Opis (mów lub pisz)'}
           </label>
           <textarea
             id="description"
@@ -117,15 +134,66 @@ function Compose({ d, onClose }: { d: AddDraft; onClose: () => void }) {
       </main>
 
       <div class="footer">
-        <button type="button" class="btn btn-primary" disabled={!canAnalyze} onClick={analyze}>
-          <Icon name="analyze" size={20} />
-          Policz kalorie
-        </button>
+        {onlyPicked ? (
+          <button type="button" class="btn btn-primary" onClick={usePicked}>
+            <Icon name="check" size={20} strokeWidth={2.5} />
+            Dalej z wybranymi · {formatNumber(pickedKcal)} kcal
+          </button>
+        ) : (
+          <button type="button" class="btn btn-primary" disabled={!canAnalyze} onClick={analyze}>
+            <Icon name="analyze" size={20} />
+            Policz kalorie
+          </button>
+        )}
         <button type="button" class="btn btn-ghost" onClick={manual}>
           Wpisz ręcznie, bez AI
         </button>
       </div>
     </>
+  );
+}
+
+const AT_MEAL: Record<MealType, string> = {
+  breakfast: 'przy śniadaniu',
+  second_breakfast: 'przy II śniadaniu',
+  lunch: 'przy obiedzie',
+  afternoon_snack: 'przy podwieczorku',
+  dinner: 'przy kolacji',
+  snack: 'przy przekąsce',
+};
+
+/** How many frequent foods the compose step offers for the chosen meal type. */
+const PICKER_LIMIT = 8;
+
+/** Frequent foods for the chosen meal type; picked ones are added to the meal without AI. */
+function FrequentPicker({ d, explain }: { d: AddDraft; explain: boolean }) {
+  const list = useFrequent({ today: d.date, context: { type: d.type }, contextOnly: true, limit: PICKER_LIMIT });
+  const picked = new Set(d.picked.map((p) => p.key));
+  // Picked foods stay visible even when they are not frequent for a newly chosen meal type.
+  const shown = [...d.picked, ...(list ?? []).filter((s) => !picked.has(s.key)).map(toPicked)];
+  if (shown.length === 0) return null;
+  const title = `Częste ${AT_MEAL[d.type]}`;
+  const kcal = d.picked.reduce((sum, p) => sum + p.kcal, 0);
+  return (
+    <section class="card" aria-label={title} style={{ gap: '10px' }}>
+      <h2 style={{ margin: 0, fontSize: '16px', fontWeight: 800 }}>{title}</h2>
+      <div class="chips">
+        {shown.map((s) => (
+          <button key={s.key} type="button" class="chip chip-check" aria-pressed={picked.has(s.key)} onClick={() => togglePicked(s)}>
+            {picked.has(s.key) && <Icon name="check" size={16} strokeWidth={3} />}
+            {s.title} · {formatNumber(s.kcal)}
+          </button>
+        ))}
+      </div>
+      {d.picked.length > 0 && (
+        <div class="small" style={{ fontWeight: 700, color: 'var(--accent)' }}>
+          Wybrane: {d.picked.length} · {formatNumber(kcal)} kcal
+        </div>
+      )}
+      {d.picked.length > 0 && explain && (
+        <div class="small muted">AI policzy opis, a wybrane dołączą do wyniku bez zmian.</div>
+      )}
+    </section>
   );
 }
 
@@ -250,7 +318,7 @@ function Review({ meal, error, onClose }: { meal: MealDraft; error: string | nul
         <MealEditor
           value={meal}
           onChange={(m) => patchDraft({ meal: m })}
-          initiallyOpen={meal.source === 'manual' ? (meal.items[0]?.id ?? null) : null}
+          initiallyOpen={meal.source === 'manual' ? (meal.items.at(-1)?.id ?? null) : null}
         />
 
         {hasKey && meal.source === 'ai' && (

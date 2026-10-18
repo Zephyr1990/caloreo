@@ -34,7 +34,17 @@ describe('backup', () => {
     expect(text).not.toContain('sk-secret');
     const parsed = parseBackup(text);
     expect(parsed.meals).toEqual([MEAL]);
-    expect(parsed.settings).toEqual({ model: 'claude-opus-5-5', dailyGoal: 1900 });
+    expect(parsed.settings).toEqual({ model: 'claude-opus-5-5', dailyGoal: 1900, hiddenFrequent: [] });
+  });
+
+  it('round-trips meals added from suggestions and the hidden suggestions (version 3)', async () => {
+    const frequent = { ...MEAL, id: 'f1', source: 'frequent' as const };
+    updateSettings({ hiddenFrequent: ['item:banan'] });
+    const text = buildBackup({ meals: [frequent] }, { model: 'claude-haiku-5-5', dailyGoal: 2100, hiddenFrequent: ['item:kawa'] });
+    expect(parseBackup(text).meals).toEqual([frequent]);
+    await importBackup(new Blob([text]));
+    expect(settings.value.hiddenFrequent).toEqual(['item:banan', 'item:kawa']);
+    updateSettings({ hiddenFrequent: [] });
   });
 
   it('rejects files that are not Caloreo backups', () => {

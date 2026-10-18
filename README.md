@@ -16,6 +16,8 @@ To aplikacja webowa (PWA). Instaluje się z Safari na ekran początkowy, bez App
 - **Ustawienia.** Klucz API z przyciskiem „Sprawdź klucz”, wybór modelu, dzienny cel, eksport i import kopii (JSON).
 - **Plan wagi** (zakładka „Waga”). Podajesz wagę obecną, docelową i datę; aplikacja liczy dzienny deficyt (albo nadwyżkę) i dzienny cel kalorii, sprawdza plan i proponuje poprawiony, gdy nie mieści się w progach. Po każdym ważeniu plan przelicza się od nowa.
 - **Aktywność z Garmina.** Na ekranie „Dziś” wpisujesz kalorie aktywne dnia (wieczorem albo następnego dnia), opcjonalnie kroki. Aplikacja liczy bilans dnia, średni rzeczywisty deficyt i porównuje go z planem.
+- **Bilans dnia na ekranie „Dziś”.** W karcie podsumowania, pod paskiem kalorii: spalone, zjedzone i deficyt (albo nadwyżka), porównanie z planem i średnia z 7 dni w wierszu planu. Przed wpisaniem danych z Garmina bilans jest szacunkiem z prognozą na koniec dnia.
+- **Częste posiłki.** Aplikacja sama zauważa, co jesz regularnie (np. serek wiejski, cappuccino), i podpowiada to na ekranie „Dziś” („Szybko dodaj”) oraz przy nowym posiłku. Dotknięcie otwiera podgląd do zatwierdzenia, bez mówienia, zdjęcia i bez kosztu API. Pełna lista z ukrywaniem jest pod „Wszystkie”.
 - **Tryb ciemny** zgodny z ustawieniem iPhone'a.
 
 Domyślne ustawienia:
@@ -32,6 +34,9 @@ Domyślne ustawienia:
 5. **Dzienny cel jedzenia** = podstawa + średnia aktywność − potrzebny deficyt.
    - Średnia aktywność pochodzi z wpisów z ostatnich 14 dni, gdy jest ich co najmniej 7.
    - Wcześniej szacuję ją z poziomu aktywności podanego w profilu.
+6. **Bilans na teraz** (dzień bez wpisu z Garmina):
+   - kalorie aktywne to średnia z ostatnich 7 dni, gdy są w nich co najmniej 3 wpisy, a wcześniej poziom aktywności z profilu;
+   - prognoza na koniec dnia zakłada, że zjesz resztę dziennego celu.
 
 Progi sprawdzania planu:
 
@@ -49,6 +54,16 @@ Gdy plan nie mieści się w progach, aplikacja proponuje późniejszą datę alb
 - Wyjątkiem jest plan zapisany mimo ostrzeżenia: wtedy cel nie jest ograniczany.
 
 [Unverified] 7 700 kcal na kilogram i progi to ogólne, często podawane przybliżenia, nie porada medyczna.
+
+## Częste posiłki: jak wybieram
+
+- Źródło: posiłki z ostatnich 60 dni zapisane na tym telefonie. Nic nie trafia na serwer.
+- To samo jedzenie to ta sama nazwa po ujednoliceniu (małe litery, bez kropek i nadmiarowych spacji). Cały posiłek to powtarzający się zestaw takich nazw.
+- Podpowiedź pojawia się po co najmniej 3 wystąpieniach w 60 dniach. Porcja i kalorie są z ostatniego razu.
+- Ocena: świeże wystąpienia ważą więcej (waga spada o połowę co 14 dni), a te o tej porze dnia (±2 godziny) albo przy tym samym rodzaju posiłku liczą się podwójnie.
+- „Szybko dodaj” i „Częste przy …” pokazują tylko to, co jadłeś już o tej porze albo przy tym rodzaju posiłku. To, co dziś już zjedzone, spada na koniec.
+- Przy analizie AI aplikacja dołącza do 30 Twoich częstych nazw produktów z prośbą, żeby użyć tej samej nazwy dla tego samego jedzenia. [Inference] To powinno ograniczać rozbijanie podpowiedzi na kilka nazw, ale model nie zawsze musi się do tego zastosować.
+- Ukryte podpowiedzi są zapisane w ustawieniach i w kopii zapasowej.
 
 ## Instalacja na iPhonie
 

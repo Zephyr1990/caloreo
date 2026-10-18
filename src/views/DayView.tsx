@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { ActivityCard } from '../components/ActivityCard';
+import { DayBalance } from '../components/DayBalance';
 import { DaySummary, type PlanLine } from '../components/DaySummary';
 import { Icon } from '../components/Icon';
 import { MealRow } from '../components/MealRow';
+import { QuickAdd } from '../components/QuickAdd';
 import { TabBar } from '../components/TabBar';
 import { addDays, dayTitle, longDate, shortDate, todayKey } from '../lib/dates';
 import { mealsForDate, mealsVersion } from '../lib/db';
@@ -13,8 +15,8 @@ import { formatKg, formatNumber, sumMeals } from '../lib/nutrition';
 import { hrefs, navigate } from '../lib/router';
 import { startListening } from '../lib/speech';
 import type { Meal } from '../lib/types';
-import { useGoal } from '../lib/usePlan';
-import { weightOn, type PlanStatus } from '../lib/weightPlan';
+import { useBalanceSummary, useGoal } from '../lib/usePlan';
+import { dayEnergy, weightOn, type BalanceSummary, type PlanStatus } from '../lib/weightPlan';
 
 export function DayView({ date }: { date: string }) {
   const today = todayKey();
@@ -39,6 +41,11 @@ export function DayView({ date }: { date: string }) {
   const remindYesterday =
     date === today && profile !== null && !!data && data.activity.length > 0 && !data.activity.some((a) => a.date === yesterday);
   const isToday = date === today;
+  const week = useBalanceSummary(profile, fromPlan ? status : null, data, today);
+  // Past days without meals have no balance worth showing.
+  const showBalance = meals !== null && data !== null && (isToday || meals.length > 0);
+  const energy = showBalance && profile ? dayEnergy(profile, weightKg, date, totals.kcal, data.activity) : null;
+  const planDelta = status && status.state === 'active' ? status.dailyDelta : null;
   const next = addDays(date, 1);
   const hrefFor = (d: string) => (d === today ? hrefs.today() : hrefs.day(d));
 
@@ -92,8 +99,19 @@ export function DayView({ date }: { date: string }) {
           totals={totals}
           goal={goal}
           label={isToday ? 'Zjedzone dziś' : 'Zjedzone tego dnia'}
-          planLine={fromPlan && status ? planLine(status) : null}
-        />
+          planLine={fromPlan && status ? planLine(status, week) : null}
+        >
+          {showBalance && (
+            <DayBalance
+              key={date}
+              energy={energy}
+              isToday={isToday}
+              goal={goal}
+              planDelta={planDelta}
+              onEnter={() => enterActivity(date)}
+            />
+          )}
+        </DaySummary>
 
         {remindYesterday && (
           <a class="reminder" href={hrefs.day(yesterday)}>
@@ -102,6 +120,8 @@ export function DayView({ date }: { date: string }) {
             <Icon name="chevronRight" size={18} />
           </a>
         )}
+
+        {isToday && <QuickAdd date={date} />}
 
         <section class="stack" aria-label="Posiłki">
           <div class="row-between" style={{ padding: '0 4px', alignItems: 'baseline' }}>
@@ -118,7 +138,7 @@ export function DayView({ date }: { date: string }) {
           {meals?.map((m) => <MealRow key={m.id} meal={m} />)}
         </section>
 
-        {meals && <ActivityCard date={date} eaten={totals.kcal} weightKg={weightKg} status={status} />}
+        {meals && <ActivityCard date={date} />}
       </main>
 
       <div class="bottom">
@@ -157,12 +177,30 @@ function entriesLabel(n: number): string {
   return `${n} wpisów`;
 }
 
-function planLine(s: PlanStatus): PlanLine {
+/** Scrolls to the Garmin field and focuses it, so the keyboard opens right away. */
+function enterActivity(date: string) {
+  const field = document.getElementById(`active-${date}`);
+  if (!field) return;
+  field.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  field.focus({ preventScroll: true });
+}
+
+function planLine(s: PlanStatus, week: BalanceSummary | null): PlanLine {
   const p = s.plan;
   const title = `Cel z planu wagi: ${formatKg(p.targetWeight)} kg do ${shortDate(p.targetDate)}`;
   if (s.state === 'reached') return { title: 'Cel wagi osiągnięty', detail: 'cel kalorii na utrzymanie wagi' };
   if (s.state === 'expired') return { title, detail: 'termin minął, cel kalorii na utrzymanie wagi' };
   const kind = s.dailyDelta >= 0 ? 'deficyt' : 'nadwyżka';
+  const plan = formatNumber(Math.abs(s.dailyDelta));
+  if (week && week.avg7 !== null) {
+    const span = week.count7 >= 7 ? '7 dni' : `${week.count7} z 7 dni`;
+    const avgKind = week.avg7 >= 0 ? 'deficytu' : 'nadwyżki';
+    const sameWay = (week.avg7 >= 0) === (s.dailyDelta >= 0);
+    return {
+      title,
+      detail: `${span}: średnio ${formatNumber(Math.abs(week.avg7))} kcal ${avgKind} · plan\u00a0${sameWay ? plan : `${kind}\u00a0${plan}`}`,
+    };
+  }
   const weekly = String(Math.round(((Math.abs(s.dailyDelta) * 7) / 7700) * 100) / 100).replace('.', ',');
-  return { title, detail: `${kind} ${formatNumber(Math.abs(s.dailyDelta))} kcal · ${weekly} kg na tydzień` };
+  return { title, detail: `${kind} ${plan} kcal · ${weekly} kg na tydzień` };
 }

@@ -2,6 +2,7 @@ import { todayKey } from './lib/dates';
 import { route } from './lib/router';
 import { AddMealView } from './views/AddMealView';
 import { DayView } from './views/DayView';
+import { FrequentView } from './views/FrequentView';
 import { HistoryView } from './views/HistoryView';
 import { MealView } from './views/MealView';
 import { PlanSetupView } from './views/PlanSetupView';
@@ -23,6 +24,8 @@ export function App() {
       return <WeightView />;
     case 'weightPlan':
       return <PlanSetupView />;
+    case 'frequent':
+      return <FrequentView />;
     case 'settings':
       return <SettingsView />;
   }

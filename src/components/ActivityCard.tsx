@@ -1,24 +1,12 @@
 import { useEffect, useState } from 'preact/hooks';
-import { body } from '../lib/body';
 import { bodyVersion, deleteActivity, getActivity, saveActivity } from '../lib/db';
-import { formatNumber } from '../lib/nutrition';
-import { hrefs } from '../lib/router';
 import type { ActivityEntry } from '../lib/types';
-import { dayBalance, type PlanStatus } from '../lib/weightPlan';
 import { parseNumber } from './NumberField';
-
-interface Props {
-  date: string;
-  /** Calories eaten that day. */
-  eaten: number;
-  weightKg: number;
-  status: PlanStatus | null;
-}
 
 const toText = (n: number | null | undefined) => (n === null || n === undefined ? '' : String(Math.round(n)));
 
-/** Garmin active calories (and optional steps) for one day, with that day's energy balance. */
-export function ActivityCard({ date, eaten, weightKg, status }: Props) {
+/** Garmin active calories (and optional steps) for one day; the balance is in the summary card. */
+export function ActivityCard({ date }: { date: string }) {
   const version = bodyVersion.value;
   const [entry, setEntry] = useState<ActivityEntry | null>(null);
   const [kcal, setKcal] = useState('');
@@ -57,9 +45,6 @@ export function ActivityCard({ date, eaten, weightKg, status }: Props) {
     }
     setSaved(true);
   };
-
-  const profile = body.value.profile;
-  const balance = profile ? dayBalance(profile, weightKg, date, eaten, entry ?? undefined) : null;
 
   return (
     <section class="card" aria-label="Aktywność">
@@ -119,50 +104,6 @@ export function ActivityCard({ date, eaten, weightKg, status }: Props) {
         <button type="button" class="btn btn-outline" disabled={!dirty || invalid} onClick={save}>
           {dirty ? 'Zapisz aktywność' : 'Zapisano'}
         </button>
-      )}
-
-      {balance ? (
-        <div class="balance" aria-label="Bilans dnia">
-          <div class="row-between">
-            <span class="muted">Podstawa</span>
-            <span>{formatNumber(balance.base)} kcal</span>
-          </div>
-          <div class="row-between">
-            <span class="muted">Aktywność (Garmin)</span>
-            <span>{balance.activeKcal === null ? 'brak' : `+ ${formatNumber(balance.activeKcal)} kcal`}</span>
-          </div>
-          {balance.burned !== null && (
-            <div class="row-between" style={{ fontWeight: 700 }}>
-              <span>Spalone</span>
-              <span>{formatNumber(balance.burned)} kcal</span>
-            </div>
-          )}
-          <div class="row-between">
-            <span class="muted">Zjedzone</span>
-            <span>− {formatNumber(eaten)} kcal</span>
-          </div>
-          <hr class="divider" />
-          {balance.balance === null ? (
-            <div class="small muted">Wpisz kalorie aktywne, aby zobaczyć bilans dnia.</div>
-          ) : (
-            <div class="row-between" style={{ alignItems: 'baseline' }}>
-              <span style={{ fontWeight: 700 }}>{balance.balance >= 0 ? 'Deficyt dnia' : 'Nadwyżka dnia'}</span>
-              <span style={{ fontSize: '18px', fontWeight: 800, color: balance.balance >= 0 ? 'var(--accent)' : 'var(--warn)' }}>
-                {formatNumber(Math.abs(balance.balance))} kcal
-              </span>
-            </div>
-          )}
-          {status && status.state === 'active' && (
-            <div class="small muted">
-              Plan wymaga średnio {formatNumber(Math.abs(status.dailyDelta))} kcal{' '}
-              {status.dailyDelta >= 0 ? 'deficytu' : 'nadwyżki'} dziennie.
-            </div>
-          )}
-        </div>
-      ) : (
-        <div class="small muted">
-          <a href={hrefs.weightPlan()}>Ustaw profil i cel wagi</a>, aby liczyć bilans dnia.
-        </div>
       )}
     </section>
   );

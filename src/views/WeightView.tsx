@@ -1,24 +1,16 @@
-import { useEffect, useState } from 'preact/hooks';
+import { useState } from 'preact/hooks';
 import { Icon } from '../components/Icon';
 import { parseNumber } from '../components/NumberField';
 import { TabBar } from '../components/TabBar';
 import { WeightChart } from '../components/WeightChart';
 import { body, updateBody } from '../lib/body';
-import { addDays, longDate, shortDate, todayKey, weekdayShort } from '../lib/dates';
-import { deleteWeight, mealsInRange, mealsVersion, saveWeight } from '../lib/db';
-import { formatKg, formatKgDelta, formatNumber, sumItems } from '../lib/nutrition';
+import { longDate, shortDate, todayKey, weekdayShort } from '../lib/dates';
+import { deleteWeight, saveWeight } from '../lib/db';
+import { formatKg, formatKgDelta, formatNumber } from '../lib/nutrition';
 import { hrefs } from '../lib/router';
-import { useGoal, type BodyData } from '../lib/usePlan';
-import {
-  ACTIVITY_LEVELS,
-  ACTIVITY_MIN_DAYS,
-  dayBalance,
-  summarizeBalance,
-  weightOn,
-  type BalanceSummary,
-  type PlanStatus,
-} from '../lib/weightPlan';
-import type { Meal, Profile } from '../lib/types';
+import { useBalanceSummary, useGoal, type BodyData } from '../lib/usePlan';
+import { ACTIVITY_LEVELS, ACTIVITY_MIN_DAYS, type PlanStatus } from '../lib/weightPlan';
+import type { Profile } from '../lib/types';
 
 const MONTHS = ['stycznia', 'lutego', 'marca', 'kwietnia', 'maja', 'czerwca', 'lipca', 'sierpnia', 'września', 'października', 'listopada', 'grudnia'];
 
@@ -209,36 +201,7 @@ function PlanCard({ status }: { status: PlanStatus }) {
 }
 
 function BalanceCard({ profile, status, data, today }: { profile: Profile; status: PlanStatus; data: BodyData; today: string }) {
-  const version = mealsVersion.value;
-  const since = status.plan.startDate;
-  const weekAgo = addDays(today, -7);
-  const from = since < weekAgo ? since : weekAgo;
-  const [meals, setMeals] = useState<Meal[] | null>(null);
-
-  useEffect(() => {
-    let alive = true;
-    mealsInRange(from, addDays(today, -1)).then((m) => alive && setMeals(m));
-    return () => {
-      alive = false;
-    };
-  }, [from, today, version]);
-
-  let summary: BalanceSummary | null = null;
-  if (meals) {
-    const eatenByDate = new Map<string, number>();
-    for (const m of meals) eatenByDate.set(m.date, (eatenByDate.get(m.date) ?? 0) + sumItems(m.items).kcal);
-    const days = [...eatenByDate.entries()].map(([date, eaten]) =>
-      dayBalance(
-        profile,
-        weightOn(data.weights, date, status.plan.startWeight),
-        date,
-        eaten,
-        data.activity.find((a) => a.date === date),
-      ),
-    );
-    summary = summarizeBalance(days, today, since);
-  }
-
+  const summary = useBalanceSummary(profile, status, data, today);
   const planDelta = status.dailyDelta;
   const measured = status.plan.startWeight - status.currentWeight;
 
